@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/forms';
 import { useToast } from '@/components/ui/toast';
 import { api } from '@/lib/api';
 import { useHomes } from '@/lib/hooks';
+import type { WattbotPage } from '@wattnexa/shared';
 import { streamWattbot, type StreamMeta, type WattbotQuota } from '@/lib/wattbot-stream';
 import { cn } from '@/lib/utils';
 import { WattbotLogo } from '@/components/BrandLogo';
@@ -59,10 +60,13 @@ export function Wattbot({
   compact = false,
   initialPrompt,
   initialPromptId,
+  page,
 }: {
   compact?: boolean;
   initialPrompt?: string;
   initialPromptId?: number;
+  /** Current screen, used for suggestions and answer emphasis. */
+  page?: WattbotPage;
 } = {}) {
   const { homeId } = useHomes();
   const queryClient = useQueryClient();
@@ -96,8 +100,9 @@ export function Wattbot({
   });
 
   const contextual = useQuery({
-    queryKey: ['wattbot', 'suggestions', homeId],
-    queryFn: () => api.get<string[]>(`/wattbot/suggestions?homeId=${homeId}`),
+    queryKey: ['wattbot', 'suggestions', homeId, page],
+    queryFn: () =>
+      api.get<string[]>(`/wattbot/suggestions?homeId=${homeId}${page ? `&page=${encodeURIComponent(page)}` : ''}`),
     enabled: Boolean(homeId),
   });
 
@@ -170,7 +175,12 @@ export function Wattbot({
 
     try {
       await streamWattbot(
-        { message: text, conversationId: conversationId ?? undefined, homeId },
+        {
+          message: text,
+          conversationId: conversationId ?? undefined,
+          homeId,
+          ...(page ? { context: { page } } : {}),
+        },
         {
           onMeta: (meta) => {
             setConversationId(meta.conversationId);

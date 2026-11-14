@@ -73,7 +73,6 @@ export function App() {
         <Route path="devices" element={<Devices />} />
         <Route path="energy" element={<Energy />} />
         <Route path="billing" element={<Billing />} />
-        <Route path="wattbot" element={null} />
         <Route path="alerts" element={<Alerts />} />
         <Route path="settings" element={<Settings />} />
         <Route

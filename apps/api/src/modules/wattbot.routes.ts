@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { and, asc, desc, eq } from 'drizzle-orm';
 import type { Request, Response } from 'express';
 import { db, users, wattbotConversations, wattbotMessages } from '@wattnexa/database';
-import { wattbotMessageSchema } from '@wattnexa/shared';
+import { wattbotMessageSchema, type WattbotContext } from '@wattnexa/shared';
 import type { z } from 'zod';
 import { requireAuth } from '../middleware/auth';
 import { bodyOf, validate } from '../middleware/validate';
@@ -32,8 +32,18 @@ async function userName(userId: string): Promise<string> {
   return row?.name?.split(' ')[0] ?? 'there';
 }
 
+/** Screen-specific starters; each one is answerable from facts or approved docs. */
+const PAGE_SUGGESTIONS: Record<string, string[]> = {
+  energy: ['Explain my daily usage pattern.', 'What drove my peak consumption?'],
+  devices: ['Which measurements does my device support?', 'My device is paired but not reporting — what should I check?'],
+  billing: ['Explain my estimated bill.', 'How does the tariff slab calculation work?'],
+  alerts: ['Explain my latest alert.', 'What should I check first when an alert fires?'],
+  settings: ['How do I configure alert thresholds?', 'What does my subscription plan include?'],
+  dashboard: ['How much energy have I used today?', 'Is my usage higher than usual?'],
+};
+
 /** Contextual starter questions, derived from what the household actually has. */
-export function buildSuggestions(facts: WattbotFacts): string[] {
+function baseSuggestions(facts: WattbotFacts): string[] {
   if (facts.devices.length === 0) {
     return [
       'How do I connect my first device?',
@@ -63,6 +73,11 @@ export function buildSuggestions(facts: WattbotFacts): string[] {
   if (facts.staleDevices.length) questions.push('Why is my device offline?');
   questions.push('What can I do to reduce my consumption?');
   return questions.slice(0, 5);
+}
+
+export function buildSuggestions(facts: WattbotFacts, context?: WattbotContext): string[] {
+  const pageQuestions = context?.page ? (PAGE_SUGGESTIONS[context.page] ?? []) : [];
+  return [...new Set([...pageQuestions, ...baseSuggestions(facts)])].slice(0, 5);
 }
 
 async function assertConversation(userId: string, conversationId: string) {
@@ -130,7 +145,8 @@ wattbotRouter.get(
     const userId = req.auth!.userId;
     const homeId = await resolveHome(req.query as Record<string, unknown>, userId);
     const facts = await collectFacts({ userId, homeId });
-    return ok(res, buildSuggestions(facts));
+    const page = typeof req.query.page === 'string' ? req.query.page : undefined;
+    return ok(res, buildSuggestions(facts, page ? { page: page as WattbotContext['page'] } : undefined));
   }),
 );
 
@@ -160,6 +176,7 @@ async function prepareTurn(
   req: Request,
   message: string,
   requestedConversationId?: string,
+  context?: WattbotContext,
 ): Promise<PreparedTurn> {
   const userId = req.auth!.userId;
   const homeId = await resolveHome(req.query as Record<string, unknown>, userId);
@@ -247,9 +264,14 @@ wattbotRouter.post(
   validate({ body: wattbotMessageSchema }),
   asyncHandler(async (req, res) => {
     const input = bodyOf<z.infer<typeof wattbotMessageSchema>>(req);
-    const turn = await prepareTurn(req, input.message, input.conversationId);
+    const turn = await prepareTurn(req, input.message, input.conversationId, input.context);
 
-    const result = await generateAnswer({ question: input.message, facts: turn.facts, history: turn.history });
+    const result = await generateAnswer({
+      question: input.message,
+      facts: turn.facts,
+      history: turn.history,
+      context: input.context,
+    });
     const messageId = await persistTurn(turn.conversationId, input.message, result, {
       dataSource: turn.facts.dataSource,
     });
@@ -264,7 +286,7 @@ wattbotRouter.post(
       fallbackReason: result.fallbackReason,
       knowledgeSources: result.knowledgeSources,
       providerConfigured: providerStatus().configured,
-      suggestions: buildSuggestions(turn.facts),
+      suggestions: buildSuggestions(turn.facts, input.context),
       context: {
         todayKwh: turn.facts.usage.todayKwh,
         monthKwh: turn.facts.usage.monthKwh,
@@ -288,7 +310,7 @@ wattbotRouter.post(
   validate({ body: wattbotMessageSchema }),
   asyncHandler(async (req, res) => {
     const input = bodyOf<z.infer<typeof wattbotMessageSchema>>(req);
-    const turn = await prepareTurn(req, input.message, input.conversationId);
+    const turn = await prepareTurn(req, input.message, input.conversationId, input.context);
 
     res.status(200);
     res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
@@ -307,7 +329,7 @@ wattbotRouter.post(
       model: status.model,
       providerConfigured: status.configured,
       notice: status.reason,
-      suggestions: buildSuggestions(turn.facts),
+      suggestions: buildSuggestions(turn.facts, input.context),
       quota: turn.quota,
       context: {
         todayKwh: turn.facts.usage.todayKwh,
@@ -322,6 +344,7 @@ wattbotRouter.post(
         question: input.message,
         facts: turn.facts,
         history: turn.history,
+        context: input.context,
         signal: abort.signal,
         onDelta: (text) => {
           if (!abort.signal.aborted) sseWrite(res, 'delta', { text });

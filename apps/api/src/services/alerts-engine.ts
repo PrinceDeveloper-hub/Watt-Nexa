@@ -6,6 +6,7 @@ import { logger } from '../lib/logger';
 import { sendAlertEmail } from '../lib/mailer';
 import { emitToUser } from './realtime';
 import { applyDeviceStatus } from './telemetry';
+import { buildWattbotInsight, notificationActions, notificationCategory } from './notification-view';
 import { env } from '../config';
 
 interface AlertDraft {
@@ -33,6 +34,19 @@ async function recentlyRaised(userId: string, type: AlertType): Promise<boolean>
 
 export async function createAlert(draft: AlertDraft): Promise<void> {
   const alertId = newId();
+  // Grounded, deterministic WattBot advice is attached once, when the alert is
+  // created — not generated again for every telemetry reading.
+  const insight = buildWattbotInsight(draft.type, draft.metadata);
+  const metadata: Record<string, unknown> = {
+    ...(draft.metadata ?? {}),
+    ...(insight ? { wattbotInsight: insight } : {}),
+  };
+  const category = notificationCategory(draft.type, metadata);
+  const actions = notificationActions(draft.type, {
+    deviceId: draft.deviceId,
+    hasInsight: Boolean(insight),
+  });
+
   await db.insert(alerts).values({
     id: alertId,
     userId: draft.userId,
@@ -42,7 +56,7 @@ export async function createAlert(draft: AlertDraft): Promise<void> {
     severity: draft.severity,
     title: draft.title,
     message: draft.message,
-    metadata: draft.metadata ?? null,
+    metadata,
   });
 
   const [prefs] = await db
@@ -73,10 +87,14 @@ export async function createAlert(draft: AlertDraft): Promise<void> {
   emitToUser(draft.userId, 'notification:new', {
     id: notificationId,
     alertId,
+    deviceId: draft.deviceId ?? null,
     title: draft.title,
     body: draft.message,
     severity: draft.severity,
     type: draft.type,
+    category,
+    actions,
+    metadata,
     createdAt: payload.createdAt,
   });
 
@@ -116,7 +134,7 @@ export async function runAlertChecks(input: {
           severity: 'warning',
           title: 'Power threshold exceeded',
           message: `Live draw reached ${sample.activePower.toFixed(0)} W, above your ${prefs.powerThresholdW.toFixed(0)} W threshold.`,
-          metadata: { activePowerW: sample.activePower },
+          metadata: { activePowerW: sample.activePower, thresholdW: prefs.powerThresholdW },
         });
       }
     }
@@ -135,6 +153,7 @@ export async function runAlertChecks(input: {
           severity: 'critical',
           title: 'Device temperature is high',
           message: `The device reported ${sample.temperature.toFixed(1)} °C, above your ${prefs.temperatureThresholdC.toFixed(0)} °C limit.`,
+          metadata: { temperatureC: sample.temperature, thresholdC: prefs.temperatureThresholdC },
         });
       }
     }
@@ -149,6 +168,7 @@ export async function runAlertChecks(input: {
           severity: 'critical',
           title: 'Unusually high load detected',
           message: `${(sample.activePower / 1000).toFixed(1)} kW is far above your typical peak. Check for a fault or a large appliance left running.`,
+          metadata: { activePowerW: sample.activePower },
         });
       }
     }

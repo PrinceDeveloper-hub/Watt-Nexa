@@ -15,6 +15,7 @@ import { asyncHandler, created, ok } from '../utils/http';
 import { resolveHome } from '../lib/home-scope';
 import { newId } from '../utils/crypto';
 import { notFound } from '../utils/errors';
+import { notificationActions, notificationCategory } from '../services/notification-view';
 
 export const alertsRouter = Router();
 alertsRouter.use(requireAuth);
@@ -69,7 +70,16 @@ alertsRouter.get(
       .select({ unread: count() })
       .from(notifications)
       .where(and(eq(notifications.userId, req.auth!.userId), isNull(notifications.readAt)));
-    return ok(res, { items: rows, unread: Number(unreadResult?.unread ?? 0) });
+    const items = rows.map((row) => ({
+      ...row,
+      // Derived server-side so the popup cannot offer an action the API lacks.
+      category: notificationCategory(row.alertType, row.metadata),
+      actions: notificationActions(row.alertType, {
+        deviceId: row.deviceId,
+        hasInsight: Boolean(row.metadata?.wattbotInsight),
+      }),
+    }));
+    return ok(res, { items, unread: Number(unreadResult?.unread ?? 0) });
   }),
 );
 

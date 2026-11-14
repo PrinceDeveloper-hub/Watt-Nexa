@@ -1,3 +1,4 @@
+import type { WattbotPage } from '@wattnexa/shared';
 import { ApiError } from './api';
 
 const BASE = (import.meta.env.VITE_API_URL as string | undefined) ?? '';
@@ -44,7 +45,7 @@ export interface StreamHandlers {
  * stream is parsed by hand. A 401 retries once through the refresh endpoint.
  */
 export async function streamWattbot(
-  body: { message: string; conversationId?: string; homeId: string },
+  body: { message: string; conversationId?: string; homeId: string; context?: { page?: WattbotPage } },
   handlers: StreamHandlers,
   signal?: AbortSignal,
   allowRetry = true,
@@ -53,7 +54,11 @@ export async function streamWattbot(
     method: 'POST',
     credentials: 'include',
     headers: { 'content-type': 'application/json', accept: 'text/event-stream' },
-    body: JSON.stringify({ message: body.message, conversationId: body.conversationId }),
+    body: JSON.stringify({
+      message: body.message,
+      conversationId: body.conversationId,
+      ...(body.context ? { context: body.context } : {}),
+    }),
     signal,
   });
 

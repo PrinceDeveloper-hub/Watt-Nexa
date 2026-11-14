@@ -84,6 +84,28 @@ export const notifications = mysqlTable(
   (table) => [index('idx_notifications_user_created').on(table.userId, table.createdAt)],
 );
 
+/**
+ * Approved WattBot product knowledge, split into retrieval-sized chunks.
+ * Vectors live alongside the text in MariaDB; the corpus is small enough to
+ * score in process, so no separate vector service is required.
+ */
+export const wattbotKnowledgeChunks = mysqlTable(
+  'wattbot_knowledge_chunks',
+  {
+    id: char('id', { length: 36 }).primaryKey(),
+    /** Stable identity so a document update replaces its chunk in place. */
+    chunkKey: varchar('chunk_key', { length: 200 }).notNull(),
+    title: varchar('title', { length: 160 }).notNull(),
+    source: varchar('source', { length: 160 }).notNull(),
+    content: text('content').notNull(),
+    contentHash: char('content_hash', { length: 64 }).notNull(),
+    embedding: json('embedding').$type<number[]>(),
+    embeddingModel: varchar('embedding_model', { length: 80 }),
+    updatedAt: timestamp('updated_at', { mode: 'date', fsp: 3 }).notNull().defaultNow(),
+  },
+  (table) => [uniqueIndex('uq_wattbot_knowledge_chunk').on(table.chunkKey)],
+);
+
 export const automationRules = mysqlTable(
   'automation_rules',
   {

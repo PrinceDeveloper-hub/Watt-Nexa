@@ -9,7 +9,8 @@
     "start": "node dist/server.js",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "simulate": "tsx scripts/simulator.ts"
+    "simulate": "tsx scripts/simulator.ts",
+    "kb:reindex": "tsx scripts/reindex-knowledge.ts"
   },
   "dependencies": {
     "@wattnexa/config": "workspace:*",

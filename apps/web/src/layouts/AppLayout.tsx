@@ -13,11 +13,11 @@ import {
   Cpu,
   X,
 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { Badge } from '@/components/ui/feedback';
 import { Button } from '@/components/ui/button';
-import { BrandLogo, WattbotLogo } from '@/components/BrandLogo';
+import { BrandLogo } from '@/components/BrandLogo';
 import { FloatingWattbot, NotificationCenter } from '@/components/FloatingWidgets';
 import { useAuth } from '@/providers/auth-provider';
 import { useTheme } from '@/providers/theme-provider';
@@ -25,9 +25,17 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { useRealtime } from '@/lib/socket';
 import { cn, initials } from '@/lib/utils';
+import type { WattbotPage } from '@wattnexa/shared';
 
-function WattbotNavIcon({ className }: { className?: string }) {
-  return <WattbotLogo className={className} />;
+function wattbotPage(pathname: string): WattbotPage {
+  if (pathname.startsWith('/app/energy')) return 'energy';
+  if (pathname.startsWith('/app/devices')) return 'devices';
+  if (pathname.startsWith('/app/billing')) return 'billing';
+  if (pathname.startsWith('/app/alerts')) return 'alerts';
+  if (pathname.startsWith('/app/settings')) return 'settings';
+  if (pathname.startsWith('/app/admin')) return 'admin';
+  if (pathname === '/app' || pathname === '/app/') return 'dashboard';
+  return 'other';
 }
 
 const navItems = [
@@ -35,7 +43,6 @@ const navItems = [
   { to: '/app/devices', label: 'Devices', icon: Cpu },
   { to: '/app/energy', label: 'Energy', icon: BarChart3 },
   { to: '/app/billing', label: 'Billing', icon: ReceiptIndianRupee },
-  { to: '/app/wattbot', label: 'WattBot', icon: WattbotNavIcon },
   { to: '/app/alerts', label: 'Alerts', icon: Bell },
   { to: '/app/settings', label: 'Settings', icon: SettingsIcon },
 ];
@@ -50,6 +57,9 @@ interface NotificationSnapshotItem {
   alertType: string | null;
   severity: 'info' | 'warning' | 'critical' | null;
   deviceId: string | null;
+  category?: string | null;
+  actions?: Array<{ key: string; label: string }> | null;
+  metadata?: Record<string, unknown> | null;
 }
 
 interface NotificationSnapshot {
@@ -65,6 +75,10 @@ function isRealtimeNotification(payload: unknown): payload is {
   type: string;
   severity: 'info' | 'warning' | 'critical';
   createdAt: string;
+  deviceId?: string | null;
+  category?: string | null;
+  actions?: Array<{ key: string; label: string }> | null;
+  metadata?: Record<string, unknown> | null;
 } {
   if (!payload || typeof payload !== 'object') return false;
   const item = payload as Record<string, unknown>;
@@ -110,7 +124,10 @@ export function AppLayout() {
                 createdAt: payload.createdAt,
                 alertType: payload.type,
                 severity: payload.severity,
-                deviceId: null,
+                deviceId: payload.deviceId ?? null,
+                category: payload.category ?? null,
+                actions: payload.actions ?? null,
+                metadata: payload.metadata ?? null,
               },
               ...current.items,
             ].slice(0, 50),
@@ -123,10 +140,6 @@ export function AppLayout() {
     'alert:new': () => void queryClient.invalidateQueries({ queryKey: ['notifications'] }),
     connect: () => void queryClient.invalidateQueries({ queryKey: ['notifications'] }),
   });
-
-  useEffect(() => {
-    if (location.pathname.startsWith('/app/wattbot')) setWattbotOpen(true);
-  }, [location.pathname]);
 
   const isAdmin = user && ['admin', 'super_admin', 'support_agent'].includes(user.role);
 
@@ -259,6 +272,7 @@ export function AppLayout() {
         onOpenChange={setWattbotOpen}
         initialPrompt={wattbotPrompt?.text}
         initialPromptId={wattbotPrompt?.key}
+        page={wattbotPage(location.pathname)}
       />
     </div>
   );

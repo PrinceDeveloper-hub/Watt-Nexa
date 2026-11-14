@@ -54,6 +54,27 @@ export type AlertType =
   | 'firmware_update'
   | 'account';
 
+export type NotificationCategory = 'energy' | 'device' | 'wattbot' | 'automation' | 'account' | 'system';
+
+/**
+ * Actions the backend has verified it can actually perform for a notification.
+ * The UI maps these to routes/chat prompts; it never invents an action such as
+ * switching an appliance off.
+ */
+export type NotificationActionKey =
+  | 'view_energy'
+  | 'view_device'
+  | 'view_alerts'
+  | 'view_account'
+  | 'view_recommendation'
+  | 'connection_help'
+  | 'ask_wattbot';
+
+export interface NotificationAction {
+  key: NotificationActionKey;
+  label: string;
+}
+
 export interface ApiSuccess<T> {
   success: true;
   data: T;

@@ -12,7 +12,9 @@ readings and tariff. It is an assistant layered on top of the energy API — not
 | Streaming (SSE) answers | **Working** — verified end to end |
 | Deterministic fallback when no provider is set/fails | **Working** — tested |
 | Contextual suggested questions | **Working** — derived from device/tariff/data state |
-| Product knowledge retrieval | **Working** — approved, source-labelled chunks retrieved by lexical relevance |
+| Product knowledge retrieval | **Working** — approved, source-labelled chunks with optional semantic retrieval and a lexical fallback |
+| Page-aware suggestions | **Working** — the current screen changes starter questions and answer emphasis, never the data scope |
+| Grounded alert insights | **Working** — deterministic WattBot advice attached when an alert is created |
 | OpenAI adapter | **Exercised against a local OpenAI-compatible mock** (success, streaming, 429, timeout). No call with a real OpenAI account has been made — see “Verification” |
 | Anthropic adapter | **Implemented, unexercised** — no key available |
 | Model-driven tool calling | **Deliberately not implemented** (see “Why the model never writes SQL”) |
@@ -35,6 +37,11 @@ WATTBOT_TIMEOUT_MS=20000         # per-request ceiling
 WATTBOT_CONTEXT_MESSAGES=10      # prior turns included in the prompt
 WATTBOT_MAX_TOKENS=700
 WATTBOT_TEMPERATURE=0.3
+
+# Optional semantic retrieval (lexical retrieval is always the fallback)
+WATTBOT_EMBEDDING_PROVIDER=none      # none | openai
+WATTBOT_EMBEDDING_MODEL=text-embedding-3-small
+WATTBOT_RETRIEVAL_MIN_SCORE=0.28
 ```
 
 Keys live only in the API process. `GET /api/v1/wattbot/status` reports whether a provider is
@@ -62,17 +69,40 @@ question ──► prepareTurn ──► collectFacts (scoped SQL) ──► gen
 
 ### Product knowledge retrieval
 
-`apps/api/src/services/wattbot/knowledge.ts` contains short, approved product-knowledge chunks
-with source paths from `README.md`, `docs/HARDWARE.md`, `docs/WATTBOT.md`, and the alert engine.
-Each chunk is a meaningful retrieval unit. A small lexical ranker selects only relevant chunks for
-the provider prompt, and the sources used are retained in message metadata and returned with the
-answer. When no provider is configured, product questions in supported topics can be answered from
-those same source-labelled chunks.
+`apps/api/src/services/wattbot/knowledge.ts` is the single approved corpus. It contains short
+product-knowledge documents with source paths from `README.md`, `docs/HARDWARE.md`,
+`docs/WATTBOT.md`, and the alert engine. `chunkKnowledgeDocuments()` splits them into stable,
+retrieval-sized chunks; each chunk keeps its source, which is returned with the answer and stored
+in message metadata.
 
-This deployment uses a MariaDB-free lexical retrieval fallback. Embedding generation, vector
-storage, automatic document ingestion, and re-indexing are not implemented; no separate vector
-service is required for the current behavior. Update the approved chunks when product contracts
-change so the assistant does not infer a feature from stale documentation.
+Retrieval has two layers:
+
+1. **Lexical (always available).** A small TF-style ranker scores term overlap with title weighting
+   and returns nothing when the question is unrelated. No database or external service is involved.
+2. **Semantic (optional).** With `WATTBOT_EMBEDDING_PROVIDER=openai` and `OPENAI_API_KEY`, the API
+   embeds each chunk via the configured embedding model, stores the vector in
+   `wattbot_knowledge_chunks.embedding` in MariaDB, and ranks chunks by cosine similarity at query
+   time. Vectors are cached in process memory for five minutes. A question only uses semantic
+   results when the top score clears `WATTBOT_RETRIEVAL_MIN_SCORE`; otherwise, or on any provider/
+   database failure, it falls back to lexical retrieval.
+
+There is no separate vector database: the corpus is small and changes rarely, so MariaDB plus an
+in-process cosine scan is sufficient. A larger corpus or multiple API replicas would justify a
+shared vector index, which would add an operational dependency.
+
+Re-index after editing the corpus or changing the embedding model:
+
+```bash
+pnpm --filter @wattnexa/api kb:reindex
+```
+
+`reindexKnowledge()` is idempotent: unchanged chunks are skipped, changed text is re-embedded, and
+chunks removed from the corpus are deleted. Without an embedding provider the command still refreshes
+the stored text for future indexing. The server also lazily indexes an empty/stale vector table on
+the first semantic question.
+
+Update the approved documents when product contracts change so the assistant does not infer a
+feature from stale documentation.
 
 ### Why the model never writes SQL
 
@@ -111,7 +141,7 @@ jailbreak cannot widen the data scope beyond what `collectFacts` already collect
 | `GET` | `/api/v1/wattbot/conversations/:id` | Transcript (max 200 messages) |
 | `DELETE` | `/api/v1/wattbot/conversations/:id` | Delete conversation and messages |
 | `GET` | `/api/v1/wattbot/status` | Provider configuration status |
-| `GET` | `/api/v1/wattbot/suggestions?homeId=` | Contextual starter questions |
+| `GET` | `/api/v1/wattbot/suggestions?homeId=&page=` | Contextual starter questions for the current screen |
 | `GET` | `/api/v1/wattbot/series?homeId=&days=7\|30` | Daily totals for the sidebar chart |
 | `POST` | `/api/v1/wattbot/messages` | Non-streaming answer |
 | `POST` | `/api/v1/wattbot/messages/stream` | SSE: `meta`, `delta`, `done`, `error` |
@@ -229,3 +259,9 @@ configured the prose comes from the same numbers.
   totals plus a per-day/per-month breakdown, not a chart.
 - Token usage and cost are not tracked.
 - Quota enforcement is check-then-insert, so a burst of simultaneous requests can slightly exceed the daily limit (see Quotas).
+- Semantic retrieval has only been exercised through its lexical fallback and unit-level cosine tests;
+  no real embedding key was available in this environment. Provider-model changes require a re-index.
+- The page context is a screen name only (for example `energy`), not the alert or device currently
+  open; alert explanations use the alert text passed by the notification popup.
+- Alerts get a deterministic WattBot insight at creation time. A provider is not called per alert,
+  by design, so the insight is not model-written prose.

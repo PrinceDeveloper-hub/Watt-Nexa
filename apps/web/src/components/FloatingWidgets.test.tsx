@@ -73,6 +73,14 @@ describe('NotificationCenter', () => {
     expect(screen.queryByText('Power threshold exceeded')).toBeNull();
   });
 
+  it('shows only actions the backend can perform', async () => {
+    renderCenter();
+    expect(await screen.findByText('Power threshold exceeded')).toBeTruthy();
+    expect(screen.getByRole('link', { name: /view energy usage/i })).toBeTruthy();
+    expect(screen.queryByText(/turn off/i)).toBeNull();
+    expect(screen.queryByText(/switch/i)).toBeNull();
+  });
+
   it('marks all unread notifications through the existing API', async () => {
     renderCenter();
     await screen.findByText('Power threshold exceeded');

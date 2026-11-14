@@ -95,6 +95,10 @@ const envSchema = z.object({
   WATTBOT_CONTEXT_MESSAGES: z.coerce.number().int().min(0).max(40).default(10),
   WATTBOT_MAX_TOKENS: z.coerce.number().int().min(100).max(4000).default(700),
   WATTBOT_TEMPERATURE: z.coerce.number().min(0).max(1).default(0.3),
+  /** Semantic retrieval is optional; lexical retrieval always remains. */
+  WATTBOT_EMBEDDING_PROVIDER: z.enum(['none', 'openai']).default('none'),
+  WATTBOT_EMBEDDING_MODEL: z.string().default('text-embedding-3-small'),
+  WATTBOT_RETRIEVAL_MIN_SCORE: z.coerce.number().min(0).max(1).default(0.28),
 
   UPLOAD_DIR: z.string().default('./uploads'),
   MAX_UPLOAD_BYTES: z.coerce.number().int().positive().default(5 * 1024 * 1024),

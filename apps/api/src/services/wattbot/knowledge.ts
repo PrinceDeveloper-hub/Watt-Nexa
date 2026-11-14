@@ -1,7 +1,13 @@
 export interface KnowledgeChunk {
+  /** Stable id used by the retrieval index; absent on ad-hoc chunks. */
+  key?: string;
   title: string;
   source: string;
   content: string;
+}
+
+export interface KnowledgeDocument extends KnowledgeChunk {
+  key: string;
 }
 
 const documents: KnowledgeChunk[] = [
@@ -83,10 +89,47 @@ function terms(text: string): string[] {
   return text.toLowerCase().match(/[a-z0-9]+/g)?.filter((word) => word.length > 2 && !stopWords.has(word)) ?? [];
 }
 
-const chunks: KnowledgeChunk[] = documents;
+const MAX_CHUNK_CHARS = 650;
 
-/** Lightweight retrieval for the MariaDB deployment; no external vector service is required. */
+function splitSentences(content: string): string[] {
+  return content.match(/[^.!?]+[.!?]+(?:\s|$)|[^.!?]+$/g)?.map((part) => part.trim()).filter(Boolean) ?? [content];
+}
+
+/**
+ * Splits the approved documents into retrieval units. Each document is short,
+ * but the splitter keeps the index correct if documentation grows.
+ */
+export function chunkKnowledgeDocuments(): KnowledgeDocument[] {
+  const chunks: KnowledgeDocument[] = [];
+  for (const document of documents) {
+    const slug = document.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    const sentences = splitSentences(document.content);
+    let current = '';
+    let index = 0;
+    const push = () => {
+      const content = current.trim();
+      if (!content) return;
+      chunks.push({
+        key: `${slug}#${index}`,
+        title: document.title,
+        source: document.source,
+        content,
+      });
+      index += 1;
+      current = '';
+    };
+    for (const sentence of sentences) {
+      if (current && current.length + sentence.length + 1 > MAX_CHUNK_CHARS) push();
+      current = current ? `${current} ${sentence}` : sentence;
+    }
+    push();
+  }
+  return chunks;
+}
+
+/** Lightweight lexical retrieval; kept as the reliable fallback. */
 export function retrieveKnowledge(question: string, limit = 4): KnowledgeChunk[] {
+  const chunks = chunkKnowledgeDocuments();
   const queryTerms = [...new Set(terms(question))];
   if (queryTerms.length === 0) return [];
 

@@ -7,8 +7,11 @@ import {
   CheckCheck,
   Cpu,
   Settings,
+  Sparkles,
   X,
 } from 'lucide-react';
+import type { NotificationAction, NotificationCategory } from '@wattnexa/types';
+import type { WattbotPage } from '@wattnexa/shared';
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Badge, Skeleton } from '@/components/ui/feedback';
@@ -29,7 +32,8 @@ interface NotificationItem {
   alertType: string | null;
   severity: 'info' | 'warning' | 'critical' | null;
   deviceId: string | null;
-  category?: string | null;
+  category?: NotificationCategory | null;
+  actions?: NotificationAction[] | null;
   metadata?: Record<string, unknown> | null;
 }
 
@@ -51,19 +55,53 @@ const filterOptions = [
 
 type NotificationFilter = (typeof filterOptions)[number]['value'];
 
-function categoryOf(item: NotificationItem): Exclude<NotificationFilter, 'all' | 'unread'> {
-  const providedCategory = filterOptions.find((option) => option.value === item.category);
-  if (providedCategory && providedCategory.value !== 'all' && providedCategory.value !== 'unread') {
-    return providedCategory.value;
-  }
+type NotificationCategoryValue = Exclude<NotificationFilter, 'all' | 'unread'>;
+
+function categoryOf(item: NotificationItem): NotificationCategoryValue {
+  if (item.category) return item.category;
   if (item.alertType === 'account') return 'account';
-  if (item.alertType?.includes('wattbot') || item.metadata?.wattbotInsight) return 'wattbot';
+  if (item.alertType?.includes('wattbot')) return 'wattbot';
   if (item.alertType?.startsWith('automation')) return 'automation';
   if (item.alertType?.startsWith('device_') || item.deviceId) return 'device';
-  if (['high_power', 'unusual_consumption', 'daily_threshold', 'monthly_threshold', 'bill_threshold'].includes(item.alertType ?? '')) {
+  if (
+    ['high_power', 'unusual_consumption', 'daily_threshold', 'monthly_threshold', 'bill_threshold', 'high_temperature'].includes(
+      item.alertType ?? '',
+    )
+  ) {
     return 'energy';
   }
   return 'system';
+}
+
+/** Fallback for a notification that arrived optimistically over Socket.IO. */
+function fallbackActions(item: NotificationItem): NotificationAction[] {
+  const category = categoryOf(item);
+  if (category === 'energy') return [{ key: 'view_energy', label: 'View energy usage' }, { key: 'ask_wattbot', label: 'Ask WattBot' }];
+  if (category === 'device') {
+    return [
+      ...(item.deviceId ? [{ key: 'view_device' as const, label: 'View device' }] : []),
+      { key: 'ask_wattbot', label: 'Ask WattBot' },
+    ];
+  }
+  if (category === 'account') return [{ key: 'view_account', label: 'View account' }];
+  return [{ key: 'view_alerts', label: 'View alerts' }, { key: 'ask_wattbot', label: 'Ask WattBot' }];
+}
+
+function actionHref(action: NotificationAction, item: NotificationItem): string | null {
+  switch (action.key) {
+    case 'view_energy':
+      return '/app/energy';
+    case 'view_device':
+      return item.deviceId ? `/app/devices?deviceId=${encodeURIComponent(item.deviceId)}` : '/app/devices';
+    case 'view_alerts':
+      return '/app/alerts';
+    case 'view_account':
+      return '/app/settings';
+    case 'connection_help':
+      return '/app/devices?help=connection';
+    default:
+      return null;
+  }
 }
 
 function severityClass(severity: NotificationItem['severity']) {
@@ -90,6 +128,7 @@ export function NotificationCenter({
   const triggerRef = useRef<HTMLButtonElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
   const [filter, setFilter] = useState<NotificationFilter>('all');
+  const [expandedInsight, setExpandedInsight] = useState<Record<string, boolean>>({});
   const client = useQueryClient();
   const notifications = useQuery({
     queryKey: ['notifications'],
@@ -240,7 +279,14 @@ export function NotificationCenter({
                 </div>
               ) : (
                 <ul className="divide-y divide-border">
-                  {items.map((item) => (
+                  {items.map((item) => {
+                    const insight =
+                      typeof item.metadata?.wattbotInsight === 'string' ? item.metadata.wattbotInsight : null;
+                    const actions = item.actions?.length ? item.actions : fallbackActions(item);
+                    const asking = insight
+                      ? `Explain this alert: ${item.title}. ${item.body} WattBot's recommendation: ${insight}`
+                      : `Explain this alert: ${item.title}. ${item.body}`;
+                    return (
                     <li key={item.id} className={`px-4 py-3 ${item.readAt ? '' : 'bg-primary/[0.035]'}`}>
                       <div className="flex items-start gap-3">
                         <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${severityClass(item.severity)}`} />
@@ -251,29 +297,65 @@ export function NotificationCenter({
                           </div>
                           <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{item.body}</p>
                           <p className="mt-1.5 text-[10px] text-muted-foreground">{notificationTime(item.createdAt)}</p>
+                          {expandedInsight[item.id] && insight ? (
+                            <div className="mt-2 rounded-lg border border-primary/20 bg-primary/5 p-2.5 text-[11px] leading-relaxed">
+                              <p className="flex items-center gap-1 font-medium text-primary">
+                                <Sparkles className="h-3 w-3" />
+                                WattBot recommendation
+                              </p>
+                              <p className="mt-1 text-muted-foreground">{insight}</p>
+                            </div>
+                          ) : null}
                           <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
-                            <Link
-                              to={categoryOf(item) === 'device' ? '/app/devices' : '/app/alerts'}
-                              onClick={() => {
-                                if (!item.readAt) markRead.mutate(item.id);
-                                onOpenChange(false);
-                              }}
-                              className="inline-flex items-center gap-1 text-[11px] font-medium text-primary hover:underline"
-                            >
-                              {categoryOf(item) === 'device' ? <Cpu className="h-3 w-3" /> : <Activity className="h-3 w-3" />}
-                              View details
-                            </Link>
-                            <button
-                              type="button"
-                              className="text-[11px] font-medium text-muted-foreground hover:text-foreground"
-                              onClick={() => {
-                                if (!item.readAt) markRead.mutate(item.id);
-                                onOpenChange(false);
-                                onAskWattbot(`Explain this alert: ${item.title}. ${item.body}`);
-                              }}
-                            >
-                              Ask WattBot
-                            </button>
+                            {actions.map((action) => {
+                              if (action.key === 'ask_wattbot') {
+                                return (
+                                  <button
+                                    key={action.key}
+                                    type="button"
+                                    className="text-[11px] font-medium text-muted-foreground hover:text-foreground"
+                                    onClick={() => {
+                                      if (!item.readAt) markRead.mutate(item.id);
+                                      onOpenChange(false);
+                                      onAskWattbot(asking);
+                                    }}
+                                  >
+                                    {action.label}
+                                  </button>
+                                );
+                              }
+                              if (action.key === 'view_recommendation') {
+                                return (
+                                  <button
+                                    key={action.key}
+                                    type="button"
+                                    className="inline-flex items-center gap-1 text-[11px] font-medium text-primary hover:underline"
+                                    onClick={() =>
+                                      setExpandedInsight((current) => ({ ...current, [item.id]: !current[item.id] }))
+                                    }
+                                  >
+                                    <Sparkles className="h-3 w-3" />
+                                    {expandedInsight[item.id] ? 'Hide recommendation' : action.label}
+                                  </button>
+                                );
+                              }
+                              const href = actionHref(action, item);
+                              if (!href) return null;
+                              return (
+                                <Link
+                                  key={action.key}
+                                  to={href}
+                                  onClick={() => {
+                                    if (!item.readAt) markRead.mutate(item.id);
+                                    onOpenChange(false);
+                                  }}
+                                  className="inline-flex items-center gap-1 text-[11px] font-medium text-primary hover:underline"
+                                >
+                                  {categoryOf(item) === 'device' ? <Cpu className="h-3 w-3" /> : <Activity className="h-3 w-3" />}
+                                  {action.label}
+                                </Link>
+                              );
+                            })}
                             {!item.readAt ? (
                               <button
                                 type="button"
@@ -288,7 +370,8 @@ export function NotificationCenter({
                         </div>
                       </div>
                     </li>
-                  ))}
+                    );
+                  })}
                 </ul>
               )}
             </div>
@@ -316,11 +399,13 @@ export function FloatingWattbot({
   onOpenChange,
   initialPrompt,
   initialPromptId,
+  page,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   initialPrompt?: string;
   initialPromptId?: number;
+  page?: WattbotPage;
 }) {
   const [hasOpened, setHasOpened] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -392,7 +477,7 @@ export function FloatingWattbot({
         <div className="min-h-0 flex-1 p-2 sm:p-3">
           {hasOpened ? (
             <Suspense fallback={<div className="space-y-3 p-3"><Skeleton className="h-10" /><Skeleton className="h-40" /></div>}>
-              <WattbotChat compact initialPrompt={initialPrompt} initialPromptId={initialPromptId} />
+              <WattbotChat compact initialPrompt={initialPrompt} initialPromptId={initialPromptId} page={page} />
             </Suspense>
           ) : null}
         </div>

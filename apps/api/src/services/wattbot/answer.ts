@@ -121,7 +121,16 @@ export function ruleBasedAnswer(question: string, facts: WattbotFacts): string {
 
   if (/(compare|last week|this week|7 day|seven day)/.test(q)) {
     if (u.previous7Kwh <= 0) {
-      return `This week you have used **${kwh(u.last7Kwh)}**. I do not have a full previous seven-day window stored yet, so a comparison would be misleading.`;
+      return [
+        `This week you have used **${kwh(u.last7Kwh)}**. I do not have a full previous seven-day window stored yet, so a comparison would be misleading.`,
+        u.daily.length
+          ? `Daily totals: ${u.daily.map((point) => `${day(point.date)} ${point.energyKwh.toFixed(1)}`).join(' · ')}`
+          : '',
+        '',
+        provenanceNote(facts),
+      ]
+        .filter(Boolean)
+        .join('\n');
     }
     const change = pct(u.previous7Kwh, u.last7Kwh);
     return [

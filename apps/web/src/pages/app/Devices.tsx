@@ -12,7 +12,8 @@ import {
   Wifi,
   WifiOff,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { formatPower } from '@wattnexa/shared';
 import { InlineError, PageHeader, SimulatedBadge, StatusDot } from '@/components/common';
 import {
@@ -117,6 +118,14 @@ export function Devices() {
   const [pairOpen, setPairOpen] = useState(false);
   const [pairing, setPairing] = useState<PairResult | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [searchParams] = useSearchParams();
+  const focusedDeviceId = searchParams.get('deviceId');
+
+  // Notification actions deep-link to a specific device; the id is still
+  // resolved server-side by requireDeviceAccess before its details render.
+  useEffect(() => {
+    if (focusedDeviceId) setSelectedId(focusedDeviceId);
+  }, [focusedDeviceId]);
   const [code, setCode] = useState('');
   const [name, setName] = useState('');
   const [serial, setSerial] = useState('');

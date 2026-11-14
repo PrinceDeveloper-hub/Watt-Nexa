@@ -64,6 +64,7 @@ pnpm build                      # API via tsup, web via tsc --noEmit && vite bui
 pnpm db:generate                # after editing packages/database/src/schema/*
 pnpm db:reset                   # drop, migrate, reseed (refuses NODE_ENV=production)
 pnpm simulate [-- --fast]       # writes simulated rows straight to MariaDB
+pnpm --filter @wattnexa/api kb:reindex   # rebuild WattBot knowledge chunks/vectors
 ```
 
 - Run pnpm from the repo root so `@wattnexa/config` finds the root `.env`.
@@ -141,7 +142,13 @@ events.
 
 - The model never gets SQL or tools. `collectFacts()` runs fixed, `requireHomeAccess`-scoped queries
   and builds a provenance-labelled fact sheet; providers only rewrite that sheet. Suggestions are
-  server-derived from device/tariff/data state.
+  server-derived from device/tariff/data state and the current screen name (`buildSuggestions`).
+- Product retrieval: approved corpus in `services/wattbot/knowledge.ts`, chunked by
+  `chunkKnowledgeDocuments()`. Optional OpenAI embeddings are stored in `wattbot_knowledge_chunks`
+  (MariaDB, cosine scored in process); lexical retrieval is the always-available fallback. Re-index
+  with `pnpm --filter @wattnexa/api kb:reindex`.
+- Alert notifications carry a deterministic `metadata.wattbotInsight`; categories/actions come from
+  `services/notification-view.ts` and never include appliance switching.
 - `WATTBOT_PROVIDER=none` is the supported default: `ruleBasedAnswer` answers and rows are stored as
   `provider='rule_based'`. Missing keys, timeouts, 429s, and empty/malformed output all fall back to
   it. `GET /wattbot/status` is the source of truth; never imply an LLM is active unless `configured`.

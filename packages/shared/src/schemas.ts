@@ -157,9 +157,30 @@ export const alertThresholdsSchema = z.object({
   pushEnabled: z.boolean().optional(),
 });
 
+export const wattbotPageSchema = z.enum([
+  'dashboard',
+  'energy',
+  'devices',
+  'billing',
+  'alerts',
+  'settings',
+  'admin',
+  'other',
+]);
+
+export type WattbotPage = z.infer<typeof wattbotPageSchema>;
+
+/** Only the current screen name is sent; no readings or page contents. */
+export const wattbotContextSchema = z.object({
+  page: wattbotPageSchema.optional(),
+});
+
+export type WattbotContext = z.infer<typeof wattbotContextSchema>;
+
 export const wattbotMessageSchema = z.object({
   message: z.string().trim().min(1).max(2000),
   conversationId: z.string().uuid().optional(),
+  context: wattbotContextSchema.optional(),
 });
 
 export const dateRangeSchema = z.object({
