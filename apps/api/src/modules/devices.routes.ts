@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { and, desc, eq, isNull } from 'drizzle-orm';
 import { z } from 'zod';
-import { db, deviceCredentials, devicePairings, devices, homes } from '@wattnexa/database';
+import { db, deviceCredentials, deviceEvents, devicePairings, devices, homes } from '@wattnexa/database';
 import { devicePairSchema, deviceUpdateSchema } from '@wattnexa/shared';
 import { bodyOf, validate } from '../middleware/validate';
 import { requireAuth } from '../middleware/auth';
@@ -10,8 +10,9 @@ import { asyncHandler, created, ok } from '../utils/http';
 import { newId, randomToken, sha256 } from '../utils/crypto';
 import { badRequest, forbidden } from '../utils/errors';
 import { auditFromRequest } from '../lib/audit';
-import { latestReading } from '../services/telemetry';
+import { deviceSensorCapabilities, latestReading, recordDeviceEvent } from '../services/telemetry';
 import { emitToHome } from '../services/realtime';
+import { publishCommand } from '../integrations/mqtt';
 import { env } from '../config';
 
 export const devicesRouter = Router();
@@ -62,7 +63,7 @@ devicesRouter.post(
   '/pair',
   validate({ body: devicePairSchema }),
   asyncHandler(async (req, res) => {
-    const input = bodyOf<{ code: string; homeId: string; name?: string }>(req);
+    const input = bodyOf<{ code: string; homeId: string; name?: string; serial?: string }>(req);
     const home = await requireHomeAccess(req.auth!.userId, input.homeId);
 
     const [pairing] = await db
@@ -79,18 +80,59 @@ devicesRouter.post(
       throw forbidden('That pairing code belongs to another account');
     }
 
-    const serial = `WNX-ESP32-${randomToken(3).toUpperCase()}`;
-    const deviceId = newId();
+    // The serial printed on the unit identifies the physical hardware; a
+    // generated one would make the device impossible to recognise later.
+    const suppliedSerial = input.serial?.trim().toUpperCase();
+    let existing: typeof devices.$inferSelect | undefined;
+    if (suppliedSerial) {
+      [existing] = await db
+        .select()
+        .from(devices)
+        .where(eq(devices.serial, suppliedSerial))
+        .limit(1);
+
+      if (existing && !existing.deletedAt) {
+        throw badRequest('That serial is already registered to a device', undefined, 'SERIAL_IN_USE');
+      }
+      // A removed device keeps its serial so history stays attributable; the
+      // same owner may bring that hardware back, nobody else can.
+      if (existing && existing.ownerId !== req.auth!.userId) {
+        throw forbidden('That serial belongs to another account. Contact support to transfer it.');
+      }
+    }
+
+    const serial = suppliedSerial ?? `WNX-ESP32-${randomToken(3).toUpperCase()}`;
+    const deviceId = existing?.id ?? newId();
     const token = `wnx_dev_${randomToken(24)}`;
 
-    await db.insert(devices).values({
-      id: deviceId,
-      homeId: home.id,
-      ownerId: req.auth!.userId,
-      name: input.name ?? 'WattNexa device',
-      serial,
-      status: 'pairing',
-    });
+    if (existing) {
+      await db
+        .update(devices)
+        .set({
+          deletedAt: null,
+          homeId: home.id,
+          name: input.name ?? existing.name,
+          // Never claim a device is connected just because it was paired.
+          status: 'not_configured',
+        })
+        .where(eq(devices.id, deviceId));
+    } else {
+      await db.insert(devices).values({
+        id: deviceId,
+        homeId: home.id,
+        ownerId: req.auth!.userId,
+        name: input.name ?? 'WattNexa device',
+        serial,
+        status: 'not_configured',
+      });
+    }
+
+    await recordDeviceEvent(
+      deviceId,
+      'paired',
+      existing ? 'Re-paired to account, awaiting first reading' : 'Paired to account, awaiting first reading',
+      { homeId: home.id, via: 'pairing-code' },
+    );
     await db.insert(deviceCredentials).values({
       id: newId(),
       deviceId,
@@ -104,10 +146,11 @@ devicesRouter.post(
 
     await auditFromRequest(req, { action: 'device.paired', resourceType: 'device', resourceId: deviceId });
     return created(res, {
-      device: { id: deviceId, name: input.name ?? 'WattNexa device', serial, status: 'pairing' },
+      device: { id: deviceId, name: input.name ?? 'WattNexa device', serial, status: 'not_configured' },
       // Shown exactly once; only the hash is stored.
       deviceToken: token,
       telemetryUrl: `${env.API_URL}/api/v1/telemetry`,
+      telemetryTopic: `${env.MQTT_TOPIC_PREFIX}/devices/${serial}/telemetry`,
     });
   }),
 );
@@ -118,6 +161,13 @@ devicesRouter.get(
     const device = await requireDeviceAccess(req.auth!.userId, req.params.deviceId as string);
     const [home] = await db.select().from(homes).where(eq(homes.id, device.homeId)).limit(1);
     const readings = await latestReading(device.id);
+    const sensors = await deviceSensorCapabilities(device.id);
+    const events = await db
+      .select()
+      .from(deviceEvents)
+      .where(eq(deviceEvents.deviceId, device.id))
+      .orderBy(desc(deviceEvents.occurredAt))
+      .limit(25);
     const credentials = await db
       .select({
         id: deviceCredentials.id,
@@ -128,7 +178,63 @@ devicesRouter.get(
       })
       .from(deviceCredentials)
       .where(eq(deviceCredentials.deviceId, device.id));
-    return ok(res, { ...device, home, latestReading: readings, credentials });
+    return ok(res, { ...device, home, latestReading: readings, sensors, events, credentials });
+  }),
+);
+
+/** Connection timeline shown on the device page. */
+devicesRouter.get(
+  '/:deviceId/events',
+  asyncHandler(async (req, res) => {
+    const device = await requireDeviceAccess(req.auth!.userId, req.params.deviceId as string);
+    const limit = Math.min(Number(req.query.limit ?? 30) || 30, 100);
+    const rows = await db
+      .select()
+      .from(deviceEvents)
+      .where(eq(deviceEvents.deviceId, device.id))
+      .orderBy(desc(deviceEvents.occurredAt))
+      .limit(limit);
+    return ok(res, rows);
+  }),
+);
+
+const COMMANDS = ['identify', 'reboot', 'sync_time', 'set_interval'] as const;
+
+/** Downlink over the commands topic. Honest 503 when MQTT is not configured. */
+devicesRouter.post(
+  '/:deviceId/commands',
+  validate({
+    body: z.object({
+      command: z.enum(COMMANDS),
+      payload: z.record(z.unknown()).optional(),
+    }),
+  }),
+  asyncHandler(async (req, res) => {
+    const device = await requireDeviceAccess(req.auth!.userId, req.params.deviceId as string);
+    const input = bodyOf<{ command: (typeof COMMANDS)[number]; payload?: Record<string, unknown> }>(req);
+
+    const sent = publishCommand(device.serial, {
+      command: input.command,
+      ...(input.payload ?? {}),
+      issuedAt: new Date().toISOString(),
+      commandId: newId(),
+    });
+
+    if (!sent) {
+      throw badRequest(
+        'MQTT is not configured, so commands cannot be delivered to devices.',
+        undefined,
+        'MQTT_DISABLED',
+      );
+    }
+
+    await auditFromRequest(req, {
+      action: 'device.command_sent',
+      resourceType: 'device',
+      resourceId: device.id,
+      metadata: { command: input.command },
+    });
+    return ok(res, { queued: true, command: input.command });
   }),
 );
 
@@ -162,6 +268,7 @@ devicesRouter.post(
       tokenHash: sha256(token),
       label: `Rotated ${new Date().toISOString().slice(0, 10)}`,
     });
+    await recordDeviceEvent(device.id, 'credential_issued', 'New device token issued');
     await auditFromRequest(req, { action: 'device.credential_created', resourceType: 'device', resourceId: device.id });
     return created(res, { token });
   }),
@@ -175,6 +282,7 @@ devicesRouter.delete(
       .update(deviceCredentials)
       .set({ revokedAt: new Date() })
       .where(and(eq(deviceCredentials.id, req.params.credentialId as string), eq(deviceCredentials.deviceId, device.id)));
+    await recordDeviceEvent(device.id, 'credential_revoked', 'Device token revoked');
     await auditFromRequest(req, { action: 'device.credential_revoked', resourceType: 'device', resourceId: device.id });
     return ok(res, { revoked: true });
   }),
@@ -184,6 +292,7 @@ devicesRouter.delete(
   '/:deviceId',
   asyncHandler(async (req, res) => {
     const device = await requireDeviceAccess(req.auth!.userId, req.params.deviceId as string);
+    await recordDeviceEvent(device.id, 'disconnected', 'Device removed from the account');
     await db.update(devices).set({ deletedAt: new Date(), status: 'offline' }).where(eq(devices.id, device.id));
     await db.update(deviceCredentials).set({ revokedAt: new Date() }).where(eq(deviceCredentials.deviceId, device.id));
     emitToHome(device.homeId, 'device:removed', { deviceId: device.id });

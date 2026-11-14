@@ -24,6 +24,14 @@ function loadEnvFile(): void {
 
 loadEnvFile();
 
+/** Empty strings in .env mean "not set" rather than an invalid URL. */
+const optionalUrl = z
+  .string()
+  .trim()
+  .optional()
+  .transform((value) => (value === '' || value === undefined ? undefined : value))
+  .pipe(z.string().url().optional());
+
 const csv = (value: string): string[] =>
   value
     .split(',')
@@ -78,6 +86,15 @@ const envSchema = z.object({
   OPENAI_MODEL: z.string().default('gpt-4o-mini'),
   ANTHROPIC_API_KEY: z.string().optional(),
   ANTHROPIC_MODEL: z.string().default('claude-3-5-sonnet-latest'),
+  /** Override for gateways, proxies and the local mock used in verification. */
+  OPENAI_BASE_URL: optionalUrl,
+  ANTHROPIC_BASE_URL: optionalUrl,
+  /** Hard ceiling per provider request; on timeout WattBot answers from data alone. */
+  WATTBOT_TIMEOUT_MS: z.coerce.number().int().min(1000).max(120_000).default(20_000),
+  /** Prior messages sent as context. Older turns stay in the database. */
+  WATTBOT_CONTEXT_MESSAGES: z.coerce.number().int().min(0).max(40).default(10),
+  WATTBOT_MAX_TOKENS: z.coerce.number().int().min(100).max(4000).default(700),
+  WATTBOT_TEMPERATURE: z.coerce.number().min(0).max(1).default(0.3),
 
   UPLOAD_DIR: z.string().default('./uploads'),
   MAX_UPLOAD_BYTES: z.coerce.number().int().positive().default(5 * 1024 * 1024),

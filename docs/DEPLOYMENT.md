@@ -164,8 +164,18 @@ location / {
 ### MQTT
 
 Set `MQTT_ENABLED=true` plus `MQTT_URL`, credentials and `MQTT_TOPIC_PREFIX`. The broker must be
-reachable **from the API host** (outbound TCP 1883/8883). Topic contract:
-`<prefix>/<device-serial>/telemetry`. Set `MQTT_ENABLED=false` to run without a broker.
+reachable **from the API host** (outbound TCP 8883 for TLS). Topic contract:
+
+```
+<prefix>/devices/<serial>/telemetry   device → API
+<prefix>/devices/<serial>/status      device → API (retained last will supported)
+<prefix>/devices/<serial>/commands    API → device
+```
+
+Set `MQTT_ENABLED=false` to run without a broker; the API then reports MQTT as disabled and device
+commands answer `503` instead of pretending to deliver. Broker credentials live only on the API
+host — never in the frontend. Per-device topic ACLs, the payload schema and an ESP32 reference
+sketch are in [HARDWARE.md](HARDWARE.md).
 
 ### Health checks
 
@@ -231,7 +241,8 @@ Run before every release, manually:
    `HttpOnly`, and (for the cross-site topology) `SameSite=None`.
 7. A request from the Vercel origin succeeds; a request from an unlisted origin is rejected by CORS.
 8. Socket.IO connects under `wss://` and a simulated reading updates the dashboard without refresh.
-9. MQTT: publish to `<prefix>/<serial>/telemetry` and see the reading stored (only if enabled).
+9. MQTT: publish to `<prefix>/devices/<serial>/telemetry` and see the reading stored, with the
+   device flipping to `online` and a `connected` entry in its connection history.
 10. `/health` returns `200`; `/docs` loads (disable or protect it publicly if preferred).
 11. Dashboard renders, WattBot answers, and a CSV/PDF export downloads.
 

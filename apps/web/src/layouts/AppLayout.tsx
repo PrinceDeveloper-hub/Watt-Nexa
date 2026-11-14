@@ -1,7 +1,6 @@
 import {
   BarChart3,
   Bell,
-  Bot,
   Gauge,
   LayoutDashboard,
   LogOut,
@@ -13,48 +12,128 @@ import {
   Sun,
   Cpu,
   X,
-  Zap,
 } from 'lucide-react';
-import { useState } from 'react';
-import { Link, NavLink, Outlet } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { Badge } from '@/components/ui/feedback';
 import { Button } from '@/components/ui/button';
+import { BrandLogo, WattbotLogo } from '@/components/BrandLogo';
+import { FloatingWattbot, NotificationCenter } from '@/components/FloatingWidgets';
 import { useAuth } from '@/providers/auth-provider';
 import { useTheme } from '@/providers/theme-provider';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
+import { useRealtime } from '@/lib/socket';
 import { cn, initials } from '@/lib/utils';
+
+function WattbotNavIcon({ className }: { className?: string }) {
+  return <WattbotLogo className={className} />;
+}
 
 const navItems = [
   { to: '/app', label: 'Overview', icon: LayoutDashboard, end: true },
   { to: '/app/devices', label: 'Devices', icon: Cpu },
   { to: '/app/energy', label: 'Energy', icon: BarChart3 },
   { to: '/app/billing', label: 'Billing', icon: ReceiptIndianRupee },
-  { to: '/app/wattbot', label: 'WattBot', icon: Bot },
+  { to: '/app/wattbot', label: 'WattBot', icon: WattbotNavIcon },
   { to: '/app/alerts', label: 'Alerts', icon: Bell },
   { to: '/app/settings', label: 'Settings', icon: SettingsIcon },
 ];
+
+interface NotificationSnapshotItem {
+  id: string;
+  alertId: string | null;
+  title: string;
+  body: string;
+  readAt: string | null;
+  createdAt: string;
+  alertType: string | null;
+  severity: 'info' | 'warning' | 'critical' | null;
+  deviceId: string | null;
+}
+
+interface NotificationSnapshot {
+  items: NotificationSnapshotItem[];
+  unread: number;
+}
+
+function isRealtimeNotification(payload: unknown): payload is {
+  id: string;
+  alertId: string;
+  title: string;
+  body: string;
+  type: string;
+  severity: 'info' | 'warning' | 'critical';
+  createdAt: string;
+} {
+  if (!payload || typeof payload !== 'object') return false;
+  const item = payload as Record<string, unknown>;
+  return (
+    typeof item.id === 'string' &&
+    typeof item.alertId === 'string' &&
+    typeof item.title === 'string' &&
+    typeof item.body === 'string' &&
+    typeof item.type === 'string' &&
+    ['info', 'warning', 'critical'].includes(String(item.severity)) &&
+    typeof item.createdAt === 'string'
+  );
+}
 
 export function AppLayout() {
   const { user, logout } = useAuth();
   const { theme, toggle } = useTheme();
   const [open, setOpen] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [wattbotOpen, setWattbotOpen] = useState(false);
+  const [wattbotPrompt, setWattbotPrompt] = useState<{ key: number; text: string } | null>(null);
+  const location = useLocation();
+  const queryClient = useQueryClient();
 
   const notifications = useQuery({
     queryKey: ['notifications'],
-    queryFn: () => api.get<{ items: unknown[]; unread: number }>('/alerts/notifications'),
+    queryFn: () => api.get<NotificationSnapshot>('/alerts/notifications'),
     refetchInterval: 60_000,
   });
+  useRealtime({
+    'notification:new': (payload) => {
+      if (isRealtimeNotification(payload)) {
+        queryClient.setQueryData<NotificationSnapshot>(['notifications'], (current) => {
+          if (!current || current.items.some((item) => item.id === payload.id)) return current;
+          return {
+            items: [
+              {
+                id: payload.id,
+                alertId: payload.alertId,
+                title: payload.title,
+                body: payload.body,
+                readAt: null,
+                createdAt: payload.createdAt,
+                alertType: payload.type,
+                severity: payload.severity,
+                deviceId: null,
+              },
+              ...current.items,
+            ].slice(0, 50),
+            unread: current.unread + 1,
+          };
+        });
+      }
+      void queryClient.invalidateQueries({ queryKey: ['notifications'] });
+    },
+    'alert:new': () => void queryClient.invalidateQueries({ queryKey: ['notifications'] }),
+    connect: () => void queryClient.invalidateQueries({ queryKey: ['notifications'] }),
+  });
+
+  useEffect(() => {
+    if (location.pathname.startsWith('/app/wattbot')) setWattbotOpen(true);
+  }, [location.pathname]);
 
   const isAdmin = user && ['admin', 'super_admin', 'support_agent'].includes(user.role);
 
   const sidebar = (
     <div className="flex h-full flex-col">
-      <div className="flex h-16 items-center gap-2 px-5">
-        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/15">
-          <Zap className="h-4 w-4 text-primary" />
-        </span>
-        <span className="font-bold tracking-tight">WattNexa</span>
+      <div className="flex h-16 items-center px-5">
+        <BrandLogo className="h-9 w-[162px]" />
       </div>
 
       <nav className="flex-1 space-y-1 px-3 py-2">
@@ -157,14 +236,14 @@ export function AppLayout() {
             <Gauge className="hidden h-4 w-4 text-muted-foreground sm:block" />
             <span className="text-sm font-medium">Energy workspace</span>
           </div>
-          <Link to="/app/alerts">
-            <Button variant="ghost" size="icon" aria-label="Notifications" className="relative">
-              <Bell />
-              {notifications.data?.unread ? (
-                <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-primary" />
-              ) : null}
-            </Button>
-          </Link>
+          <NotificationCenter
+            open={notificationsOpen}
+            onOpenChange={setNotificationsOpen}
+            onAskWattbot={(text) => {
+              setWattbotPrompt({ key: Date.now(), text });
+              setWattbotOpen(true);
+            }}
+          />
           <Button variant="ghost" size="icon" onClick={toggle} aria-label="Toggle theme" className="hidden sm:inline-flex">
             {theme === 'dark' ? <Sun /> : <Moon />}
           </Button>
@@ -174,6 +253,13 @@ export function AppLayout() {
           <Outlet />
         </main>
       </div>
+
+      <FloatingWattbot
+        open={wattbotOpen}
+        onOpenChange={setWattbotOpen}
+        initialPrompt={wattbotPrompt?.text}
+        initialPromptId={wattbotPrompt?.key}
+      />
     </div>
   );
 }

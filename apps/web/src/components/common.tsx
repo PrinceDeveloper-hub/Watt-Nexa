@@ -81,19 +81,25 @@ export function SimulatedBadge({ simulated }: { simulated: boolean }) {
   );
 }
 
+const DEVICE_STATUS: Record<string, { label: string; dot: string; text: string; pulse?: boolean }> = {
+  online: { label: 'Online', dot: 'bg-emerald-500', text: 'text-emerald-600 dark:text-emerald-400' },
+  connecting: { label: 'Connecting', dot: 'bg-sky-500', text: 'text-sky-600 dark:text-sky-400', pulse: true },
+  not_configured: { label: 'Not configured', dot: 'bg-amber-500', text: 'text-amber-600 dark:text-amber-400' },
+  offline: { label: 'Offline', dot: 'bg-slate-400', text: 'text-muted-foreground' },
+  error: { label: 'Error', dot: 'bg-red-500', text: 'text-red-600 dark:text-red-400' },
+};
+
+/** Driven by what the backend actually observed, never by the UI. */
 export function StatusDot({ status }: { status: string }) {
-  const color =
-    status === 'online'
-      ? 'bg-emerald-500'
-      : status === 'error'
-        ? 'bg-red-500'
-        : status === 'pairing'
-          ? 'bg-amber-500'
-          : 'bg-slate-400';
+  const meta = DEVICE_STATUS[status] ?? {
+    label: status,
+    dot: 'bg-slate-400',
+    text: 'text-muted-foreground',
+  };
   return (
-    <span className="inline-flex items-center gap-1.5 text-xs capitalize text-muted-foreground">
-      <span className={cn('h-1.5 w-1.5 rounded-full', color)} />
-      {status}
+    <span className={cn('inline-flex items-center gap-1.5 text-xs', meta.text)}>
+      <span className={cn('h-1.5 w-1.5 rounded-full', meta.dot, meta.pulse && 'animate-pulse')} />
+      {meta.label}
     </span>
   );
 }

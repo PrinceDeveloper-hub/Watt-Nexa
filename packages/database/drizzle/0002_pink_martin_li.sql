@@ -1,0 +1,1 @@
+ALTER TABLE `wattbot_messages` ADD `metadata` json;

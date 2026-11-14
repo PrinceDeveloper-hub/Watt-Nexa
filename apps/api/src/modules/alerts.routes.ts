@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { and, desc, eq, isNull } from 'drizzle-orm';
+import { and, count, desc, eq, isNull } from 'drizzle-orm';
 import { z } from 'zod';
 import {
   db,
@@ -48,13 +48,28 @@ alertsRouter.get(
   '/notifications',
   asyncHandler(async (req, res) => {
     const rows = await db
-      .select()
+      .select({
+        id: notifications.id,
+        alertId: notifications.alertId,
+        title: notifications.title,
+        body: notifications.body,
+        readAt: notifications.readAt,
+        createdAt: notifications.createdAt,
+        alertType: alerts.type,
+        severity: alerts.severity,
+        metadata: alerts.metadata,
+        deviceId: alerts.deviceId,
+      })
       .from(notifications)
+      .leftJoin(alerts, eq(notifications.alertId, alerts.id))
       .where(eq(notifications.userId, req.auth!.userId))
       .orderBy(desc(notifications.createdAt))
       .limit(50);
-    const unread = rows.filter((row) => row.readAt === null).length;
-    return ok(res, { items: rows, unread });
+    const [unreadResult] = await db
+      .select({ unread: count() })
+      .from(notifications)
+      .where(and(eq(notifications.userId, req.auth!.userId), isNull(notifications.readAt)));
+    return ok(res, { items: rows, unread: Number(unreadResult?.unread ?? 0) });
   }),
 );
 

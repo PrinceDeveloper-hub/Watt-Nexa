@@ -99,10 +99,27 @@ curl -X POST http://localhost:4000/api/v1/telemetry \
   }'
 ```
 
-MQTT topic: `<MQTT_TOPIC_PREFIX>/<device-serial>/telemetry` with the same JSON body.
+MQTT topics (prefix defaults to `wattnexa`):
+
+| Topic | Direction |
+| --- | --- |
+| `<prefix>/devices/<serial>/telemetry` | device → API |
+| `<prefix>/devices/<serial>/status` | device → API (use `offline` as the last will) |
+| `<prefix>/devices/<serial>/commands` | API → device |
 
 **Only send what the hardware actually measures.** Omit unknown fields — they are stored as `NULL`
 and rendered as "unavailable", never zero-filled.
+
+Devices move through `not_configured → connecting → online → offline`, plus `error`. The status is
+driven by real traffic: pairing alone never marks a device online, and the 60-second sweep marks a
+device offline when telemetry stops. Every transition is written to the device's connection history.
+
+Send a `message_id` with each reading so MQTT QoS 1 redelivery cannot create duplicate rows; the
+database enforces it with a unique index.
+
+Full contract, broker ACLs and an ESP32 reference sketch: [docs/HARDWARE.md](docs/HARDWARE.md).
+MQTT is implemented but has **not** been tested against physical hardware — the simulator is the
+only verified data source so far.
 
 ---
 
@@ -116,6 +133,26 @@ and rendered as "unavailable", never zero-filled.
 6. A single whole-house CT sensor does not identify individual appliances — appliance figures are manual estimates.
 
 ---
+
+## WattBot
+
+The in-app energy assistant answers from the authenticated household's stored readings and tariff —
+it never receives database access, only a pre-computed fact sheet, and it refuses to invent readings,
+rates or savings.
+
+```dotenv
+WATTBOT_PROVIDER=none     # none | openai | anthropic — keys stay on the backend
+```
+
+Messages are metered per plan from `subscription_plans.wattbot_messages_per_day` (Free 0 — not
+included, Plus 20/day, Pro 100/day) and enforced server-side before any provider call, with the rollover
+at 00:00 UTC.
+
+With no provider configured (the default), WattBot still works: replies are computed deterministically
+from your data and the UI labels the mode. Streaming runs over Server-Sent Events, conversations are
+persisted per user, and provider timeouts/rate limits fall back to the same grounded answer.
+
+Full configuration, safety model and current limits: [docs/WATTBOT.md](docs/WATTBOT.md).
 
 ## Deployment
 

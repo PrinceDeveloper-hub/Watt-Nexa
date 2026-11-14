@@ -73,9 +73,13 @@ export const devices = mysqlTable(
     model: varchar('model', { length: 64 }).notNull().default('WattNexa CT-1'),
     room: varchar('room', { length: 80 }),
     firmwareVersion: varchar('firmware_version', { length: 40 }),
-    status: mysqlEnum('status', ['online', 'offline', 'pairing', 'error'])
+    /**
+     * not_configured — paired but never reported; connecting — handshake seen,
+     * no reading yet; online/offline/error are driven by real traffic only.
+     */
+    status: mysqlEnum('status', ['online', 'offline', 'connecting', 'not_configured', 'error'])
       .notNull()
-      .default('pairing'),
+      .default('not_configured'),
     lastSeenAt: timestamp('last_seen_at', { mode: 'date', fsp: 3 }),
     lastReadingAt: timestamp('last_reading_at', { mode: 'date', fsp: 3 }),
     signalStrength: smallint('signal_strength'),
@@ -152,12 +156,48 @@ export const deviceTelemetry = mysqlTable(
     temperature: double('temperature'),
     frequency: double('frequency'),
     signalStrength: smallint('signal_strength'),
+    /** Firmware-supplied idempotency key; MQTT QoS 1 may redeliver a message. */
+    messageId: varchar('message_id', { length: 64 }),
     source: mysqlEnum('source', ['hardware', 'simulated']).notNull().default('hardware'),
     createdAt: timestamp('created_at', { mode: 'date', fsp: 3 }).notNull().defaultNow(),
   },
   (table) => [
     index('idx_telemetry_device_time').on(table.deviceId, table.recordedAt),
     index('idx_telemetry_recorded').on(table.recordedAt),
+    // MySQL allows repeated NULLs, so devices without a message id still insert.
+    uniqueIndex('uq_telemetry_device_message').on(table.deviceId, table.messageId),
+  ],
+);
+
+/**
+ * Connection and lifecycle history. Append-only: the device page shows it as
+ * the connection timeline, so entries are never rewritten after the fact.
+ */
+export const deviceEvents = mysqlTable(
+  'device_events',
+  {
+    id: bigint('id', { mode: 'number', unsigned: true }).autoincrement().primaryKey(),
+    deviceId: char('device_id', { length: 36 })
+      .notNull()
+      .references(() => devices.id, { onDelete: 'cascade' }),
+    type: mysqlEnum('type', [
+      'paired',
+      'connected',
+      'reconnected',
+      'disconnected',
+      'error',
+      'credential_issued',
+      'credential_revoked',
+      'telemetry_rejected',
+      'status_changed',
+    ]).notNull(),
+    message: varchar('message', { length: 240 }),
+    metadata: json('metadata').$type<Record<string, unknown>>(),
+    occurredAt: timestamp('occurred_at', { mode: 'date', fsp: 3 }).notNull().defaultNow(),
+  },
+  (table) => [
+    index('idx_device_events_device_time').on(table.deviceId, table.occurredAt),
+    index('idx_device_events_type').on(table.type),
   ],
 );
 
@@ -256,7 +296,7 @@ export const appliances = mysqlTable(
     category: varchar('category', { length: 40 }).notNull(),
     ratedPowerW: double('rated_power_w').notNull().default(0),
     estimatedHoursPerDay: double('estimated_hours_per_day').notNull().default(0),
-    /** true only when usage is backed by measured data */
+    /** true only when usage is backed by measured data. */
     isMeasured: boolean('is_measured').notNull().default(false),
     ...timestamps,
     ...softDelete,

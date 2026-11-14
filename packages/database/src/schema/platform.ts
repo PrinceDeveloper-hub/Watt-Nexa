@@ -150,6 +150,8 @@ export const wattbotMessages = mysqlTable(
     content: text('content').notNull(),
     /** provider used: rule_based | openai | anthropic */
     provider: varchar('provider', { length: 40 }).notNull().default('rule_based'),
+    /** Model, latency, fallback reason — never the prompt or any credential. */
+    metadata: json('metadata').$type<Record<string, unknown>>(),
     createdAt: timestamp('created_at', { mode: 'date', fsp: 3 }).notNull().defaultNow(),
   },
   (table) => [index('idx_messages_conversation').on(table.conversationId, table.createdAt)],

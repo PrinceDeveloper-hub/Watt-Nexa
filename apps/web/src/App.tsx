@@ -11,7 +11,6 @@ import { Dashboard } from './pages/app/Dashboard';
 import { Devices } from './pages/app/Devices';
 import { Energy } from './pages/app/Energy';
 import { Billing } from './pages/app/Billing';
-import { Wattbot } from './pages/app/Wattbot';
 import { Alerts } from './pages/app/Alerts';
 import { Settings } from './pages/app/Settings';
 import { Admin } from './pages/app/Admin';
@@ -74,7 +73,7 @@ export function App() {
         <Route path="devices" element={<Devices />} />
         <Route path="energy" element={<Energy />} />
         <Route path="billing" element={<Billing />} />
-        <Route path="wattbot" element={<Wattbot />} />
+        <Route path="wattbot" element={null} />
         <Route path="alerts" element={<Alerts />} />
         <Route path="settings" element={<Settings />} />
         <Route

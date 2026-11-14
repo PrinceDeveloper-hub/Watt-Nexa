@@ -81,6 +81,14 @@ export const devicePairSchema = z.object({
   code: z.string().trim().min(4).max(32),
   homeId: z.string().uuid(),
   name: z.string().trim().min(1).max(80).optional(),
+  /** Serial printed on the unit; required to recognise the device later. */
+  serial: z
+    .string()
+    .trim()
+    .min(4)
+    .max(64)
+    .regex(/^[A-Za-z0-9-]+$/, 'Use letters, digits and dashes only')
+    .optional(),
 });
 
 export const telemetryPayloadSchema = z.object({
@@ -93,10 +101,27 @@ export const telemetryPayloadSchema = z.object({
   temperature: optionalMeasure,
   frequency: optionalMeasure,
   signal_strength: optionalMeasure,
-  device_status: z.enum(['online', 'offline', 'error']).optional(),
+  device_status: z.enum(['online', 'connecting', 'offline', 'error']).optional(),
   firmware_version: z.string().max(40).optional(),
+  /** Idempotency key so a redelivered MQTT message is stored once. */
+  message_id: z.string().trim().min(1).max(64).optional(),
   timestamp: isoDateTime.optional(),
-});
+  /** Rejects payloads that carry no measurement at all. */
+}).refine(
+  (value) =>
+    [
+      value.voltage,
+      value.current,
+      value.active_power,
+      value.apparent_power,
+      value.power_factor,
+      value.energy_kwh,
+      value.temperature,
+      value.frequency,
+      value.signal_strength,
+    ].some((measurement) => measurement != null),
+  { message: 'Telemetry must include at least one measurement' },
+);
 
 export const tariffSlabSchema = z.object({
   minKwh: z.coerce.number().min(0),

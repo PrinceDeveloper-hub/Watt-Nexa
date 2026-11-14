@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Bell, BellRing, CheckCheck } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { PageHeader } from '@/components/common';
 import { Badge, EmptyState, Skeleton, Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/feedback';
 import { Button } from '@/components/ui/button';
@@ -43,6 +44,11 @@ const severityVariant = (severity: Alert['severity']) =>
   severity === 'critical' ? 'danger' : severity === 'warning' ? 'warning' : 'neutral';
 
 export function Alerts() {
+  const [searchParams] = useSearchParams();
+  const requestedTab = searchParams.get('view');
+  const [activeTab, setActiveTab] = useState<'alerts' | 'notifications' | 'settings'>(
+    requestedTab === 'settings' ? 'settings' : 'alerts',
+  );
   const { homeId } = useHomes();
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -64,6 +70,10 @@ export function Alerts() {
   const prefs = preferences.data;
   const value = (key: keyof Preferences) =>
     form[key] ?? (prefs?.[key] == null ? '' : String(prefs[key]));
+
+  useEffect(() => {
+    if (requestedTab === 'settings') setActiveTab('settings');
+  }, [requestedTab]);
 
   const savePrefs = useMutation({
     mutationFn: () =>
@@ -106,7 +116,12 @@ export function Alerts() {
         }
       />
 
-      <Tabs defaultValue="alerts">
+      <Tabs
+        value={activeTab}
+        onValueChange={(value) => {
+          if (value === 'alerts' || value === 'notifications' || value === 'settings') setActiveTab(value);
+        }}
+      >
         <TabsList>
           <TabsTrigger value="alerts">Alerts</TabsTrigger>
           <TabsTrigger value="notifications">

@@ -1,10 +1,11 @@
-import { Menu, Moon, Sun, X, Zap } from 'lucide-react';
+import { Menu, Moon, Sun, X } from 'lucide-react';
 import { useState } from 'react';
 import { Link, NavLink, Outlet } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/providers/auth-provider';
 import { useTheme } from '@/providers/theme-provider';
 import { cn } from '@/lib/utils';
+import { BrandLogo } from '@/components/BrandLogo';
 
 const links = [
   { to: '/features', label: 'Features' },
@@ -23,11 +24,8 @@ export function PublicLayout() {
     <div className="min-h-screen bg-background">
       <header className="sticky top-0 z-40 border-b border-border/70 bg-background/80 backdrop-blur-xl">
         <div className="container flex h-16 items-center justify-between gap-4">
-          <Link to="/" className="flex items-center gap-2">
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/15">
-              <Zap className="h-4 w-4 text-primary" />
-            </span>
-            <span className="text-[15px] font-bold tracking-tight">WattNexa</span>
+          <Link to="/" className="flex items-center">
+            <BrandLogo className="h-9 w-[162px]" />
           </Link>
 
           <nav className="hidden items-center gap-1 md:flex">
@@ -103,12 +101,7 @@ export function PublicLayout() {
       <footer className="border-t border-border bg-surface">
         <div className="container grid gap-10 py-12 sm:grid-cols-2 lg:grid-cols-4">
           <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <span className="flex h-7 w-7 items-center justify-center rounded-md bg-primary/15">
-                <Zap className="h-3.5 w-3.5 text-primary" />
-              </span>
-              <span className="font-bold">WattNexa</span>
-            </div>
+            <BrandLogo className="h-9 w-[162px]" />
             <p className="max-w-xs text-xs leading-relaxed text-muted-foreground">
               Know exactly where your electricity bill is going. Real-time monitoring, honest analytics and
               tariff-aware bill estimates.

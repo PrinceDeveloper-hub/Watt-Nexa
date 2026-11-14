@@ -4,7 +4,6 @@ import {
   ArrowRight,
   BarChart3,
   Bell,
-  Bot,
   Check,
   Cpu,
   Gauge,
@@ -22,6 +21,11 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { api } from '@/lib/api';
 import { formatCurrency } from '@wattnexa/shared';
+import { WattbotLogo } from '@/components/BrandLogo';
+
+function WattbotFeatureIcon({ className }: { className?: string }) {
+  return <WattbotLogo className={className} />;
+}
 
 interface Plan {
   id: string;
@@ -71,7 +75,7 @@ const features = [
     body: 'Thresholds for power, temperature, daily and monthly usage. Suppressed and deduplicated so you are not spammed by a single spike.',
   },
   {
-    icon: Bot,
+    icon: WattbotFeatureIcon,
     title: 'WattBot explains the numbers',
     body: 'Ask why your bill moved. WattBot answers from your own authorised readings, with a deterministic fallback when no AI provider is configured.',
   },

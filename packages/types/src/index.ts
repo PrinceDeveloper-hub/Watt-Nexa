@@ -5,7 +5,33 @@
 
 export type Role = 'user' | 'admin' | 'super_admin' | 'support_agent';
 
-export type DeviceStatus = 'online' | 'offline' | 'pairing' | 'error';
+export type DeviceStatus = 'online' | 'offline' | 'connecting' | 'not_configured' | 'error';
+
+export type DeviceEventType =
+  | 'paired'
+  | 'connected'
+  | 'reconnected'
+  | 'disconnected'
+  | 'error'
+  | 'credential_issued'
+  | 'credential_revoked'
+  | 'telemetry_rejected'
+  | 'status_changed';
+
+export interface DeviceEvent {
+  id: number;
+  deviceId: string;
+  type: DeviceEventType;
+  message: string | null;
+  metadata: Record<string, unknown> | null;
+  occurredAt: string;
+}
+
+/** Which measurements a device actually reports, inferred from its readings. */
+export type SensorCapability = {
+  key: 'voltage' | 'current' | 'activePower' | 'apparentPower' | 'powerFactor' | 'energyKwh' | 'temperature' | 'frequency' | 'signalStrength';
+  available: boolean;
+};
 
 export type TelemetrySource = 'hardware' | 'simulated';
 
@@ -85,6 +111,8 @@ export interface TelemetrySample {
   temperature: number | null;
   frequency: number | null;
   signalStrength: number | null;
+  /** Device-supplied idempotency key, when the firmware sends one. */
+  messageId?: string | null;
   source: TelemetrySource;
 }
 

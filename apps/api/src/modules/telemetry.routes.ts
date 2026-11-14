@@ -8,7 +8,7 @@ import { requireAuth } from '../middleware/auth';
 import { bodyOf, validate } from '../middleware/validate';
 import { telemetryLimiter } from '../middleware/rate-limit';
 import { asyncHandler, created, ok } from '../utils/http';
-import { ingestReading } from '../services/telemetry';
+import { applyDeviceStatus, ingestReading } from '../services/telemetry';
 import { requireDeviceAccess } from '../lib/ownership';
 import { emitToHome } from '../services/realtime';
 import { runAlertChecks } from '../services/alerts-engine';
@@ -44,7 +44,38 @@ telemetryRouter.post(
       sample: result.sample,
     });
 
-    return created(res, { accepted: true, recordedAt: result.sample.recordedAt });
+    return created(res, {
+      accepted: true,
+      duplicate: result.duplicate,
+      recordedAt: result.sample.recordedAt,
+      deviceStatus: result.deviceStatus,
+    });
+  }),
+);
+
+/**
+ * Status-only heartbeat for firmware that cannot attach a measurement
+ * (for example while it waits for the CT clamp). It never writes a reading.
+ */
+telemetryRouter.post(
+  '/status',
+  telemetryLimiter,
+  requireDevice,
+  validate({
+    body: z.object({
+      status: z.enum(['online', 'connecting', 'offline', 'error']),
+      reason: z.string().max(200).optional(),
+      firmware_version: z.string().max(40).optional(),
+    }),
+  }),
+  asyncHandler(async (req, res) => {
+    const device = req.device!;
+    const input = bodyOf<{ status: 'online' | 'connecting' | 'offline' | 'error'; reason?: string }>(req);
+    await applyDeviceStatus({ deviceId: device.id, homeId: device.homeId, ownerId: device.ownerId }, input.status, {
+      reason: input.reason ?? 'Device heartbeat',
+      transport: 'http',
+    });
+    return ok(res, { status: input.status });
   }),
 );
 

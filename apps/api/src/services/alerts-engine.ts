@@ -5,6 +5,7 @@ import { newId } from '../utils/crypto';
 import { logger } from '../lib/logger';
 import { sendAlertEmail } from '../lib/mailer';
 import { emitToUser } from './realtime';
+import { applyDeviceStatus } from './telemetry';
 import { env } from '../config';
 
 interface AlertDraft {
@@ -50,8 +51,9 @@ export async function createAlert(draft: AlertDraft): Promise<void> {
     .where(eq(notificationPreferences.userId, draft.userId))
     .limit(1);
 
+  const notificationId = newId();
   await db.insert(notifications).values({
-    id: newId(),
+    id: notificationId,
     userId: draft.userId,
     alertId,
     channel: 'in_app',
@@ -68,6 +70,15 @@ export async function createAlert(draft: AlertDraft): Promise<void> {
     createdAt: new Date().toISOString(),
   };
   emitToUser(draft.userId, 'alert:new', payload);
+  emitToUser(draft.userId, 'notification:new', {
+    id: notificationId,
+    alertId,
+    title: draft.title,
+    body: draft.message,
+    severity: draft.severity,
+    type: draft.type,
+    createdAt: payload.createdAt,
+  });
 
   if (prefs?.emailEnabled) {
     const [user] = await db
@@ -155,8 +166,13 @@ export async function markStaleDevicesOffline(): Promise<void> {
     .where(and(eq(devices.status, 'online'), lt(devices.lastSeenAt, cutoff), isNull(devices.deletedAt)));
 
   for (const device of stale) {
-    await db.update(devices).set({ status: 'offline' }).where(eq(devices.id, device.id));
-    emitToUser(device.ownerId, 'device:status', { deviceId: device.id, status: 'offline' });
+    await applyDeviceStatus(
+      { deviceId: device.id, homeId: device.homeId, ownerId: device.ownerId },
+      'offline',
+      {
+        reason: `No telemetry for ${env.OFFLINE_THRESHOLD_SECONDS}s`,
+      },
+    );
     if (!(await recentlyRaised(device.ownerId, 'device_offline'))) {
       await createAlert({
         userId: device.ownerId,
@@ -174,7 +190,7 @@ export async function markStaleDevicesOffline(): Promise<void> {
 export async function markDeviceOnline(deviceId: string, ownerId: string, homeId: string, name: string) {
   const [device] = await db.select({ status: devices.status }).from(devices).where(eq(devices.id, deviceId)).limit(1);
   if (device && device.status !== 'online') {
-    await db.update(devices).set({ status: 'online' }).where(eq(devices.id, deviceId));
+    await applyDeviceStatus({ deviceId, homeId, ownerId }, 'online', { reason: 'Device came back online' });
     await createAlert({
       userId: ownerId,
       homeId,

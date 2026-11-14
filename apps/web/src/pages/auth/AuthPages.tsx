@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { ArrowLeft, Zap } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import type * as React from 'react';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
@@ -13,6 +13,7 @@ import { Field, Input } from '@/components/ui/forms';
 import { useToast } from '@/components/ui/toast';
 import { ApiError, api } from '@/lib/api';
 import { useAuth } from '@/providers/auth-provider';
+import { BrandLogo } from '@/components/BrandLogo';
 
 function AuthShell({
   title,
@@ -30,11 +31,8 @@ function AuthShell({
       <div className="relative hidden flex-col justify-between overflow-hidden border-r border-border bg-surface p-10 lg:flex">
         <div className="absolute inset-0 grid-bg opacity-30" aria-hidden />
         <div className="absolute inset-0 hero-glow" aria-hidden />
-        <Link to="/" className="relative flex items-center gap-2">
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/15">
-            <Zap className="h-4 w-4 text-primary" />
-          </span>
-          <span className="font-bold">WattNexa</span>
+        <Link to="/" className="relative flex items-center">
+          <BrandLogo className="h-9 w-[162px]" />
         </Link>
         <div className="relative max-w-sm">
           <h2 className="text-3xl font-bold leading-tight tracking-tight">
