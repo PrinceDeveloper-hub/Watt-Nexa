@@ -25,8 +25,8 @@ async function main(): Promise<void> {
 
   server.listen(env.API_PORT, () => {
     logger.info(
-      { port: env.API_PORT, mode: env.SENSOR_MODE, env: env.NODE_ENV },
-      `WattNexa API ready at ${env.API_URL}`,
+      { port: env.API_PORT, mode: env.SENSOR_MODE, env: env.NODE_ENV, publicUrl: env.API_URL },
+      `WattNexa API listening on port ${env.API_PORT}`,
     );
   });
 

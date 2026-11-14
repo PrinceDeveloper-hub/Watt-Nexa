@@ -49,8 +49,13 @@ const envSchema = z.object({
   JWT_REFRESH_SECRET: z.string().min(16).default('dev-refresh-secret-change-me-please'),
   ACCESS_TOKEN_TTL: z.string().default('15m'),
   REFRESH_TOKEN_TTL_DAYS: z.coerce.number().int().positive().default(30),
-  COOKIE_DOMAIN: z.string().default('localhost'),
   COOKIE_SECURE: z.string().default('false').pipe(booleanish),
+  /**
+   * 'lax' for same-site deployments (local, or web + api on one domain).
+   * 'none' is required when the web app and API live on different sites
+   * (e.g. Vercel frontend + VPS API); it forces Secure cookies.
+   */
+  COOKIE_SAME_SITE: z.enum(['lax', 'strict', 'none']).default('lax'),
   BCRYPT_ROUNDS: z.coerce.number().int().min(4).max(15).default(10),
 
   SMTP_HOST: z.string().optional(),

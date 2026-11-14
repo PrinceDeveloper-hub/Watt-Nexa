@@ -1,5 +1,5 @@
 import type { NextFunction, Request, Response } from 'express';
-import { env } from '../config';
+import { isAllowedOrigin } from '../lib/origin';
 import { forbidden } from '../utils/errors';
 
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
@@ -20,8 +20,7 @@ export function csrfProtection(req: Request, _res: Response, next: NextFunction)
     next();
     return;
   }
-  const allowed = new Set([...env.CORS_ORIGINS, env.WEB_URL]);
-  if (!allowed.has(origin)) {
+  if (!isAllowedOrigin(origin)) {
     next(forbidden('Cross-origin request blocked'));
     return;
   }

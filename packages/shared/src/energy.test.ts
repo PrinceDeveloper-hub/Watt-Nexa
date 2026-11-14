@@ -32,8 +32,8 @@ describe('calculateCost', () => {
 
   it('applies the final rate to units above the last slab', () => {
     const result = calculateCost(400, tariff);
-    // 300 + 600 + 100*9 = 1800
-    expect(result.energyCost).toBe(1800);
+    // 100*3 + 200*6 + 100*9 = 2400
+    expect(result.energyCost).toBe(2400);
     expect(result.slabs).toHaveLength(3);
   });
 

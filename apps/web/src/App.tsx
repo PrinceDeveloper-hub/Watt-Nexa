@@ -1,3 +1,4 @@
+import type * as React from 'react';
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { Spinner } from './components/ui/feedback';
 import { AppLayout } from './layouts/AppLayout';

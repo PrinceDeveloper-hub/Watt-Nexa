@@ -29,10 +29,13 @@ export function verifyAccessToken(token: string): AccessPayload | null {
   }
 }
 
+// SameSite=None is only valid together with Secure, and is required when the
+// web app and API are served from different sites (Vercel + VPS).
+const sameSite = env.COOKIE_SAME_SITE;
 const baseCookie: CookieOptions = {
   httpOnly: true,
-  sameSite: 'lax',
-  secure: isProduction || env.COOKIE_SECURE,
+  sameSite,
+  secure: sameSite === 'none' ? true : isProduction || env.COOKIE_SECURE,
   path: '/',
 };
 

@@ -1,50 +1,83 @@
-# Project knowledge
+# WattNexa — project knowledge
 
-Context for AI agents working in this repo: what it is, how to run it, and the traps.
+Deeper reference for working in this repo. `AGENTS.md` holds the short always-loaded version.
 
-## Status
+## Goal
 
-This is a **fresh workspace with no application code yet**. There is no git history, no
-`package.json`, no manifest, and no source directory. Anything below describing commands is
-therefore aspirational — verify before relying on it, and update this file once the project
-takes shape.
+"Know exactly where your electricity bill is going." Monitor a household's electricity, explain
+what changed, and translate consumption into the amount the user actually pays.
 
-## What's here
+## Layout
 
-- `knowledge.md` — this file.
-- `AGENTS.md` — project-instructions template read by agents. Still blank; fill it in as
-  conventions emerge (it is the file agents read automatically, so keep rules there).
-- `.agents/types/` — Codebuff **scaffolding**, not project source:
-  - `agent-definition.ts` — `AgentDefinition` and related types for custom agents
-  - `tools.ts` — `ToolName` union and `ToolParamsMap`
-  - `util-types.ts` — shared helper types (`JSONValue`, etc.)
+```
+apps/web/                 React 18 + Vite + Tailwind + Radix primitives
+  src/pages/Landing.tsx   marketing homepage
+  src/pages/public/       features, pricing, faq, about, contact, blog, legal
+  src/pages/auth/         login, register, verify, forgot, reset
+  src/pages/app/          dashboard, devices, energy, billing, wattbot, alerts, settings, admin
+  src/components/ui/      button, card, forms, feedback, toast
+  src/providers/          theme + auth (TanStack Query)
+  src/lib/                api client, hooks, socket, utilities
+apps/api/
+  src/modules/            auth, users, homes, devices, telemetry, energy, billing,
+                          alerts, wattbot, reports, subscriptions, admin, public, dev
+  src/services/           energy queries, telemetry ingest, alert engine, realtime, wattbot
+  src/middleware/         auth, device-auth, validate, error, rate-limit, csrf
+  src/integrations/       MQTT
+  src/jobs/               scheduler (offline sweep + hourly rollup)
+  scripts/simulator.ts    simulated telemetry publisher
+packages/
+  config/                 Zod-validated env (loads root .env)
+  types/                  shared DTOs
+  shared/                 tariff math, aggregation, ranges, formatters, Zod schemas, tests
+  database/               Drizzle schema (30 tables), migrations, seed, reset
+```
 
-Treat `.agents/types/` as read-only vendor code: regenerate it rather than hand-editing, and do
-not count it as application logic when reasoning about the codebase.
+## Data model highlights
 
-## Commands
+- `device_telemetry` — raw readings, indexed on `(device_id, recorded_at)`. Nullable measurement
+  columns mean "not sensed".
+- `energy_aggregates` — hourly/daily rollups, unique on `(device_id, bucket, bucket_start)`.
+- `tariffs` + `tariff_slabs` — progressive block tariffs (min/max kWh, rate).
+- `device_credentials` — hashed per-device tokens with revocation.
+- `audit_logs` — actor, action, resource for administrative changes.
 
-None defined yet. When adding tooling, record the exact commands here:
+## Energy & billing semantics
 
-- Setup: _(e.g. `npm install`)_
-- Dev: _(e.g. `npm run dev`)_
-- Test: _(e.g. `npm test`)_
-- Lint / format: _(e.g. `npm run lint`)_
-- Build: _(e.g. `npm run build`)_
+- `energyTotal` / SQL series prefer `MAX(energy_kwh) - MIN(energy_kwh)`; when a device reports no
+  cumulative energy, average power is integrated over the bucket and is an estimate.
+- `calculateCost` is a progressive slab calculation plus fixed charge and tax; units above the last
+  slab use the last rate rather than being dropped.
+- `projectMonthly` is linear extrapolation and is labelled a projection.
 
-## Conventions and gotchas
+## Auth
 
-- **No package manager is chosen yet.** Pick one and commit a lockfile before adding
-  dependencies; don't assume one exists.
-- **Shell is bash (Git Bash on Windows).** Use POSIX syntax — `ls`, `mv`, `rm`, `cp`, `grep` —
-  and forward-slash paths. Avoid `dir`/`move`/`del`/`findstr` and PowerShell cmdlets.
-- **Hidden directories are excluded from glob/search results.** `.agents/` will not show up in
-  file discovery; inspect it with `ls` or `list_directory`.
-- **Keep agent instructions in `AGENTS.md`**, not only here — that file is loaded automatically
-  each session, while `knowledge.md` is read on demand.
+- Access JWT (15 min) + opaque refresh token (1 day, or 30 with "remember me").
+- Both live in HTTP-only, SameSite=Lax cookies (`wnx_at`, `wnx_rt`). Refresh tokens rotate; only a
+  SHA-256 hash is persisted in `user_sessions`.
+- `requireAuth` re-reads the user each request so suspensions apply immediately.
+- CSRF: SameSite cookies plus an Origin allow-list check on state-changing requests.
+- Development affordances: verification codes and reset tokens are returned in the response body
+  when `NODE_ENV !== production`; emails also land in `/api/v1/dev/outbox` when SMTP is unset.
 
-## Next steps
+## Realtime
 
-1. Scaffold the app (language, framework, entry point) and note the key directories here.
-2. Add a manifest plus lockfile, then fill in the command list above.
-3. Replace the `AGENTS.md` template headings with real conventions once they're established.
+Socket.IO at `/socket.io`. Handshake authenticates from the access cookie; sockets join
+`user:<id>` and `home:<id>`. Events: `telemetry:new`, `device:status`, `alert:new`, `device:removed`.
+The client hook (`src/lib/socket.ts`) invalidates TanStack Query caches on those events.
+
+## Verification
+
+```bash
+pnpm typecheck          # all workspaces
+pnpm --filter @wattnexa/shared test     # tariff + aggregation unit tests
+pnpm --filter @wattnexa/web build       # production bundle
+curl localhost:4000/health/ready         # database reachability
+```
+
+## Not implemented yet
+
+- Payment gateway (sandbox only), Excel export, support-ticket UI, blog CMS UI.
+- Automation rules are stored and editable but not executed by the scheduler yet.
+- Route-level code splitting for the web bundle.
+- Integration/E2E test suites (domain unit tests exist).

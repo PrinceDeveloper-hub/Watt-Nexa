@@ -2,7 +2,7 @@ import type { Server as HttpServer } from 'node:http';
 import { Server as SocketServer } from 'socket.io';
 import { db, householdMembers, homes } from '@wattnexa/database';
 import { and, eq, isNull } from 'drizzle-orm';
-import { env } from '../config';
+import { isAllowedOrigin } from '../lib/origin';
 import { verifyAccessToken } from '../lib/tokens';
 import { logger } from '../lib/logger';
 
@@ -29,7 +29,12 @@ async function resolveHomes(userId: string): Promise<string[]> {
 export function initRealtime(server: HttpServer): SocketServer {
   io = new SocketServer(server, {
     path: '/socket.io',
-    cors: { origin: [...env.CORS_ORIGINS, env.WEB_URL], credentials: true },
+    cors: {
+      // Preview deployments use fresh hostnames, so match the allow-list
+      // patterns rather than a fixed set.
+      origin: (origin, callback) => callback(null, !origin || isAllowedOrigin(origin)),
+      credentials: true,
+    },
   });
 
   io.use(async (socket, next) => {

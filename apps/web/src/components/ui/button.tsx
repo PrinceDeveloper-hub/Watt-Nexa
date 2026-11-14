@@ -38,6 +38,20 @@ export interface ButtonProps
 export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant, size, asChild = false, loading = false, children, disabled, ...props }, ref) => {
     const Comp = asChild ? Slot : 'button';
+
+    // Slot requires exactly one valid element child. Rendering the optional
+    // loader as a sibling (even as `null`) makes `children` an array and throws
+    // "Slot failed to slot onto its children", so only the plain button branch
+    // gets the loader.
+    const content = asChild ? (
+      children
+    ) : (
+      <>
+        {loading ? <Loader2 className="animate-spin" /> : null}
+        {children}
+      </>
+    );
+
     return (
       <Comp
         ref={ref}
@@ -45,8 +59,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         disabled={disabled || loading}
         {...props}
       >
-        {loading ? <Loader2 className="animate-spin" /> : null}
-        {children}
+        {content}
       </Comp>
     );
   },

@@ -13,6 +13,7 @@ import { apiRouter } from './routes';
 import { appConfig, env, isProduction } from './config';
 import { logger } from './lib/logger';
 import { openApiDocument } from './openapi';
+import { isAllowedOrigin } from './lib/origin';
 
 export function createApp(): Express {
   const app = express();
@@ -24,8 +25,8 @@ export function createApp(): Express {
     cors({
       origin(origin, callback) {
         if (!origin) return callback(null, true);
-        const allowed = new Set([...env.CORS_ORIGINS, env.WEB_URL]);
-        return callback(allowed.has(origin) ? null : new Error('Origin not allowed'), allowed.has(origin));
+        const allowed = isAllowedOrigin(origin);
+        return callback(allowed ? null : new Error('Origin not allowed'), allowed);
       },
       credentials: true,
       methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
