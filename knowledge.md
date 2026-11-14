@@ -52,7 +52,8 @@ pnpm docker:up                  # MariaDB 11 on :3306 (Docker Desktop must be ru
 pnpm db:migrate && pnpm db:seed
 pnpm dev                        # API :4000 + web :5173
 
-pnpm typecheck                  # reliable repo-wide gate; currently passes
+pnpm typecheck                  # repo-wide gate; currently fails in apps/api/src/modules/billing.routes.ts
+#   (installationDate string vs Date; optional ratedPowerW). packages/* and apps/web pass.
 pnpm test                       # every suite; needs MariaDB up and migrated+seeded
 
 pnpm --filter @wattnexa/shared test        # tariff/aggregation math
@@ -80,7 +81,10 @@ pnpm --filter @wattnexa/api kb:reindex   # rebuild WattBot knowledge chunks/vect
 All variables live in `.env.example`; `@wattnexa/config` validates them with Zod and loads the root
 `.env` by walking up from the cwd. The ones that change behavior most:
 
-- `DATABASE_URL` — must be port 3306 to match Compose.
+- `DATABASE_URL` — must match the running MariaDB instance. Compose publishes on 3306
+  (`mysql://wattnexa:wattnexa@localhost:3306/wattnexa`); on this checkout `.env` points at a
+  dedicated MariaDB 11.8 on **3308** because :3306 here is MySQL 5.5 and Docker is unavailable.
+  A mismatch surfaces as "Database unreachable".
 - `SENSOR_MODE` (`simulated` | `hardware`), `OFFLINE_THRESHOLD_SECONDS` (default 120).
 - `MQTT_ENABLED` / `MQTT_URL` / `MQTT_TOPIC_PREFIX` — disabled by default; the adapter reports itself
   disabled rather than pretending telemetry arrives.
