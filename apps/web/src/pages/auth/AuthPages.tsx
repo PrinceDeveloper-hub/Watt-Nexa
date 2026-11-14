@@ -14,6 +14,7 @@ import { useToast } from '@/components/ui/toast';
 import { ApiError, api } from '@/lib/api';
 import { useAuth } from '@/providers/auth-provider';
 import { BrandLogo } from '@/components/BrandLogo';
+import { Seo } from '@/components/seo';
 
 function AuthShell({
   title,
@@ -26,8 +27,10 @@ function AuthShell({
   children: React.ReactNode;
   footer?: React.ReactNode;
 }) {
+  const location = useLocation();
   return (
     <div className="grid min-h-screen lg:grid-cols-2">
+      <Seo title={`${title} · WattNexa`} description={subtitle} path={location.pathname} noindex />
       <div className="relative hidden flex-col justify-between overflow-hidden border-r border-border bg-surface p-10 lg:flex">
         <div className="absolute inset-0 grid-bg opacity-30" aria-hidden />
         <div className="absolute inset-0 hero-glow" aria-hidden />
@@ -93,7 +96,7 @@ export function Login() {
       await login(values.email, values.password, Boolean(values.remember));
       toast({ title: 'Signed in', variant: 'success' });
       const from = (location.state as { from?: string } | null)?.from;
-      navigate(from ?? '/app', { replace: true });
+      navigate(from ?? '/dashboard', { replace: true });
     } catch (err) {
       if (err instanceof ApiError && err.code === 'EMAIL_NOT_VERIFIED') {
         navigate(`/verify?email=${encodeURIComponent(values.email)}`);
@@ -248,7 +251,7 @@ export function VerifyEmail() {
     try {
       await api.post('/auth/verify-email', { email, code });
       toast({ title: 'Email verified', variant: 'success' });
-      navigate('/app', { replace: true });
+      navigate('/dashboard', { replace: true });
     } catch (err) {
       setError(errorMessage(err));
     } finally {

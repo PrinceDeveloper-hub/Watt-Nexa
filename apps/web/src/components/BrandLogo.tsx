@@ -15,10 +15,22 @@ export function BrandLogo({ compact = false, className = '' }: { compact?: boole
       className={className}
       width={compact ? 40 : 180}
       height={40}
+      decoding="async"
+      draggable={false}
     />
   );
 }
 
 export function WattbotLogo({ className = '' }: { className?: string }) {
-  return <img src="/branding/wattbot-mark.svg" alt="WattBot" className={className} width={40} height={40} />;
+  return (
+    <img
+      src="/branding/wattbot-mark.svg"
+      alt="WattBot"
+      className={className}
+      width={40}
+      height={40}
+      decoding="async"
+      draggable={false}
+    />
+  );
 }

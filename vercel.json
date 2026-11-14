@@ -4,6 +4,16 @@
   "installCommand": "pnpm install --frozen-lockfile",
   "buildCommand": "pnpm --filter @wattnexa/web build",
   "outputDirectory": "apps/web/dist",
+  "redirects": [
+    { "source": "/app", "destination": "/dashboard", "permanent": true },
+    { "source": "/app/devices", "destination": "/devices", "permanent": true },
+    { "source": "/app/energy", "destination": "/energy-analytics", "permanent": true },
+    { "source": "/app/billing", "destination": "/billing", "permanent": true },
+    { "source": "/app/wattbot", "destination": "/wattbot", "permanent": true },
+    { "source": "/app/alerts", "destination": "/alerts", "permanent": true },
+    { "source": "/app/settings", "destination": "/settings", "permanent": true },
+    { "source": "/app/admin", "destination": "/admin", "permanent": true }
+  ],
   "rewrites": [
     {
       "source": "/(.*)",
@@ -19,6 +29,14 @@
           "value": "public, max-age=31536000, immutable"
         }
       ]
+    },
+    {
+      "source": "/:path(dashboard|devices|energy-analytics|billing|wattbot|alerts|settings|admin|403|login|register|verify|forgot-password|reset-password)",
+      "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow" }]
+    },
+    {
+      "source": "/app/:path*",
+      "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow" }]
     },
     {
       "source": "/(.*)",

@@ -14,6 +14,7 @@ import { useToast } from '@/components/ui/toast';
 import { api } from '@/lib/api';
 import { formatCurrency } from '@wattnexa/shared';
 import { formatDate } from '@/lib/utils';
+import { Seo } from '@/components/seo';
 
 interface Plan {
   id: string;
@@ -87,10 +88,10 @@ export function Features() {
             <ul className="mt-4 space-y-4">
               {group.items.map(([title, body]) => (
                 <li key={title}>
-                  <p className="flex items-center gap-2 text-sm font-medium">
+                  <h3 className="flex items-center gap-2 text-sm font-medium">
                     <Check className="h-3.5 w-3.5 text-primary" />
                     {title}
-                  </p>
+                  </h3>
                   <p className="mt-1 pl-5.5 text-xs leading-relaxed text-muted-foreground">{body}</p>
                 </li>
               ))}
@@ -121,7 +122,7 @@ export function HowItWorks() {
               {index + 1}
             </span>
             <div>
-              <p className="text-sm font-semibold">{title}</p>
+              <h3 className="text-sm font-semibold">{title}</h3>
               <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{body}</p>
             </div>
           </li>
@@ -146,7 +147,7 @@ export function Pricing() {
           ? [0, 1, 2].map((key) => <Skeleton key={key} className="h-72" />)
           : (plans.data ?? []).map((plan) => (
               <Card key={plan.id} className={plan.slug === 'plus' ? 'border-primary/40 p-6 shadow-lift' : 'p-6'}>
-                <p className="text-sm font-semibold">{plan.name}</p>
+                <h3 className="text-sm font-semibold">{plan.name}</h3>
                 <p className="mt-1 min-h-[32px] text-xs text-muted-foreground">{plan.description}</p>
                 <p className="mt-4 text-3xl font-bold">
                   {plan.priceMonthly === 0 ? 'Free' : formatCurrency(plan.priceMonthly, plan.currency)}
@@ -187,9 +188,9 @@ export function Faq() {
         {faqs.isLoading ? <Skeleton className="h-40" /> : null}
         {(faqs.data ?? []).map((faq) => (
           <details key={faq.id} className="group rounded-xl border border-border bg-card p-5">
-            <summary className="cursor-pointer list-none text-sm font-medium">
+            <summary className="cursor-pointer list-none">
               <span className="flex items-center justify-between gap-4">
-                {faq.question}
+                <h2 className="text-sm font-medium">{faq.question}</h2>
                 <span className="text-muted-foreground transition-transform group-open:rotate-45">+</span>
               </span>
             </summary>
@@ -261,6 +262,7 @@ export function Contact() {
       {intro('Contact', 'Talk to the team', 'Sales, support, or a hardware question — this reaches a person.')}
       <div className="mx-auto mt-10 grid max-w-3xl gap-4 md:grid-cols-5">
         <Card className="p-6 md:col-span-3">
+          <h2 className="sr-only">Send a message</h2>
           {sent ? (
             <EmptyState
               icon={Check}
@@ -300,16 +302,17 @@ export function Contact() {
           )}
         </Card>
         <Card className="space-y-4 p-6 md:col-span-2">
+          <h2 className="sr-only">Direct contacts</h2>
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Support</p>
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Support</h3>
             <p className="mt-1 text-sm">support@wattnexa.com</p>
           </div>
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Sales</p>
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Sales</h3>
             <p className="mt-1 text-sm">sales@wattnexa.com</p>
           </div>
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Hours</p>
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Hours</h3>
             <p className="mt-1 text-xs text-muted-foreground">Mon–Sat, 10:00–19:00 IST</p>
           </div>
         </Card>
@@ -358,6 +361,17 @@ export function BlogPost() {
 
   return (
     <Shell>
+      {post.data ? (
+        <Seo
+          title={`${post.data.title} · WattNexa`}
+          description={
+            post.data.content.replace(/\s+/g, ' ').slice(0, 155).trim() ||
+            'A WattNexa resource on measuring household electricity honestly.'
+          }
+          path={`/blog/${slug ?? ''}`}
+          type="article"
+        />
+      ) : null}
       {post.isLoading ? <Skeleton className="h-64" /> : null}
       {post.data ? (
         <article className="mx-auto max-w-2xl">

@@ -90,15 +90,15 @@ function fallbackActions(item: NotificationItem): NotificationAction[] {
 function actionHref(action: NotificationAction, item: NotificationItem): string | null {
   switch (action.key) {
     case 'view_energy':
-      return '/app/energy';
+      return '/energy-analytics';
     case 'view_device':
-      return item.deviceId ? `/app/devices?deviceId=${encodeURIComponent(item.deviceId)}` : '/app/devices';
+      return item.deviceId ? `/devices?deviceId=${encodeURIComponent(item.deviceId)}` : '/devices';
     case 'view_alerts':
-      return '/app/alerts';
+      return '/alerts';
     case 'view_account':
-      return '/app/settings';
+      return '/settings';
     case 'connection_help':
-      return '/app/devices?help=connection';
+      return '/devices?help=connection';
     default:
       return null;
   }
@@ -379,7 +379,7 @@ export function NotificationCenter({
             <footer className="flex items-center justify-between border-t border-border px-4 py-2.5">
               <span className="text-[10px] text-muted-foreground">Recent activity</span>
               <Link
-                to="/app/alerts?view=settings"
+                to="/alerts?view=settings"
                 onClick={() => onOpenChange(false)}
                 className="inline-flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground hover:text-foreground"
               >
@@ -450,7 +450,7 @@ export function FloatingWattbot({
         }}
         transition={{ duration: reducedMotion ? 0 : 0.18 }}
         style={{ visibility: open ? 'visible' : 'hidden', pointerEvents: open ? 'auto' : 'none' }}
-        className="fixed inset-x-2 bottom-[max(1rem,env(safe-area-inset-bottom))] top-16 z-[60] flex flex-col overflow-hidden rounded-2xl border border-border bg-surface shadow-2xl sm:inset-auto sm:bottom-20 sm:right-6 sm:top-auto sm:h-[min(42rem,calc(100dvh-7rem))] sm:w-[min(31rem,calc(100vw-3rem))]"
+        className="fixed inset-x-2 bottom-[max(1rem,env(safe-area-inset-bottom))] top-16 z-[60] flex flex-col overflow-hidden rounded-3xl border border-border bg-surface shadow-lift sm:inset-auto sm:bottom-20 sm:right-6 sm:top-auto sm:h-[min(42rem,calc(100dvh-7rem))] sm:w-[min(31rem,calc(100vw-3rem))]"
       >
         <header className="flex shrink-0 items-center justify-between border-b border-border bg-surface px-3 py-2.5">
           <div className="flex min-w-0 items-center gap-2.5">
@@ -491,7 +491,7 @@ export function FloatingWattbot({
         onClick={() => onOpenChange(!open)}
         animate={reducedMotion ? undefined : { scale: [1, 1.025, 1] }}
         transition={reducedMotion ? undefined : { duration: 3.2, repeat: Infinity, ease: 'easeInOut' }}
-        className={`relative flex h-14 w-14 items-center justify-center rounded-2xl border border-white/10 bg-[#17334A] shadow-xl shadow-[#17334A]/20 transition-colors hover:bg-[#20435e] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${open ? 'hidden' : ''}`}
+        className={`relative flex h-14 w-14 items-center justify-center rounded-2xl border border-white/10 bg-secondary shadow-lift transition-transform hover:scale-[1.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${open ? 'hidden' : ''}`}
       >
         <WattbotLogo className="h-11 w-11" />
       </motion.button>

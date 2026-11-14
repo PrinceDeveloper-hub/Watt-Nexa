@@ -6,15 +6,15 @@ import * as React from 'react';
 import { cn } from '@/lib/utils';
 
 const badgeVariants = cva(
-  'inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] font-medium transition-colors',
+  'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[11px] font-medium leading-4 transition-colors',
   {
     variants: {
       variant: {
-        default: 'border-transparent bg-primary/12 text-primary',
-        neutral: 'border-border bg-muted text-muted-foreground',
-        warning: 'border-transparent bg-amber-500/15 text-amber-600 dark:text-amber-400',
-        danger: 'border-transparent bg-destructive/12 text-destructive',
-        outline: 'border-border text-foreground',
+        default: 'border-primary/15 bg-primary/10 text-primary',
+        neutral: 'border-border bg-muted/70 text-muted-foreground',
+        warning: 'border-warning/20 bg-warning/10 text-warning',
+        danger: 'border-destructive/15 bg-destructive/10 text-destructive',
+        outline: 'border-border bg-transparent text-foreground',
       },
     },
     defaultVariants: { variant: 'default' },
@@ -30,7 +30,15 @@ export function Badge({
 }
 
 export function Skeleton({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn('animate-pulse rounded-md bg-muted', className)} {...props} />;
+  return (
+    <div
+      className={cn('relative overflow-hidden rounded-lg bg-muted/80', className)}
+      aria-hidden="true"
+      {...props}
+    >
+      <span className="absolute inset-0 -translate-x-full animate-shimmer bg-gradient-to-r from-transparent via-foreground/[0.04] to-transparent" />
+    </div>
+  );
 }
 
 export const Spinner = ({ className }: { className?: string }) => (
@@ -38,7 +46,7 @@ export const Spinner = ({ className }: { className?: string }) => (
     role="status"
     aria-label="Loading"
     className={cn(
-      'inline-block h-5 w-5 animate-spin rounded-full border-2 border-muted-foreground/30 border-t-primary',
+      'inline-block h-5 w-5 animate-spin rounded-full border-2 border-muted-foreground/25 border-t-primary',
       className,
     )}
   />
@@ -49,24 +57,32 @@ export function EmptyState({
   title,
   description,
   action,
+  className,
 }: {
   icon?: React.ComponentType<{ className?: string }>;
   title: string;
   description: string;
   action?: React.ReactNode;
+  className?: string;
 }) {
   return (
-    <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-border px-6 py-14 text-center">
+    <div
+      className={cn(
+        'relative flex flex-col items-center justify-center gap-4 overflow-hidden rounded-2xl border border-dashed border-border px-6 py-14 text-center',
+        className,
+      )}
+    >
+      <div className="pointer-events-none absolute inset-0 mesh-light opacity-40" />
       {Icon ? (
-        <span className="flex h-11 w-11 items-center justify-center rounded-full bg-muted">
-          <Icon className="h-5 w-5 text-muted-foreground" />
+        <span className="relative flex h-12 w-12 items-center justify-center rounded-2xl border border-border bg-card shadow-soft">
+          <Icon className="h-5 w-5 text-primary" />
         </span>
       ) : null}
-      <div className="space-y-1">
-        <p className="text-sm font-semibold">{title}</p>
-        <p className="mx-auto max-w-sm text-xs text-muted-foreground">{description}</p>
+      <div className="relative space-y-1.5">
+        <p className="font-display text-sm font-semibold">{title}</p>
+        <p className="mx-auto max-w-sm text-xs leading-relaxed text-muted-foreground">{description}</p>
       </div>
-      {action}
+      {action ? <div className="relative">{action}</div> : null}
     </div>
   );
 }
@@ -79,17 +95,17 @@ export const DialogContent = React.forwardRef<
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
 >(({ className, children, ...props }, ref) => (
   <DialogPrimitive.Portal>
-    <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
+    <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-secondary/45 backdrop-blur-[3px] data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
     <DialogPrimitive.Content
       ref={ref}
       className={cn(
-        'fixed left-1/2 top-1/2 z-50 w-[calc(100%-2rem)] max-w-lg -translate-x-1/2 -translate-y-1/2 rounded-xl border border-border bg-card p-6 shadow-lift data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95',
+        'fixed left-1/2 top-1/2 z-50 max-h-[90dvh] w-[calc(100%-2rem)] max-w-lg -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-2xl border border-border bg-card p-6 shadow-lift data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95',
         className,
       )}
       {...props}
     >
       {children}
-      <DialogPrimitive.Close className="absolute right-4 top-4 rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
+      <DialogPrimitive.Close className="absolute right-4 top-4 rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
         <X className="h-4 w-4" />
         <span className="sr-only">Close</span>
       </DialogPrimitive.Close>
@@ -99,14 +115,14 @@ export const DialogContent = React.forwardRef<
 DialogContent.displayName = 'DialogContent';
 
 export const DialogHeader = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
-  <div className={cn('mb-4 space-y-1.5 pr-8', className)} {...props} />
+  <div className={cn('mb-5 space-y-1.5 pr-8', className)} {...props} />
 );
 
 export const DialogTitle = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Title>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Title>
 >(({ className, ...props }, ref) => (
-  <DialogPrimitive.Title ref={ref} className={cn('text-base font-semibold', className)} {...props} />
+  <DialogPrimitive.Title ref={ref} className={cn('font-display text-lg font-semibold', className)} {...props} />
 ));
 DialogTitle.displayName = 'DialogTitle';
 
@@ -116,7 +132,7 @@ export const DialogDescription = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <DialogPrimitive.Description
     ref={ref}
-    className={cn('text-xs text-muted-foreground', className)}
+    className={cn('text-xs leading-relaxed text-muted-foreground', className)}
     {...props}
   />
 ));
@@ -126,7 +142,10 @@ export const Tabs = TabsPrimitive.Root;
 
 export const TabsList = ({ className, ...props }: React.ComponentPropsWithoutRef<typeof TabsPrimitive.List>) => (
   <TabsPrimitive.List
-    className={cn('inline-flex items-center gap-1 rounded-lg bg-muted p-1', className)}
+    className={cn(
+      'inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-xl border border-border/70 bg-muted/50 p-1 hide-scrollbar',
+      className,
+    )}
     {...props}
   />
 );
@@ -137,7 +156,7 @@ export const TabsTrigger = ({
 }: React.ComponentPropsWithoutRef<typeof TabsPrimitive.Trigger>) => (
   <TabsPrimitive.Trigger
     className={cn(
-      'rounded-md px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-sm',
+      'shrink-0 rounded-lg px-3 py-1.5 text-xs font-medium text-muted-foreground transition-all duration-200 data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-soft',
       className,
     )}
     {...props}
@@ -157,7 +176,7 @@ export function Table({ className, ...props }: React.TableHTMLAttributes<HTMLTab
 export const Th = ({ className, ...props }: React.ThHTMLAttributes<HTMLTableCellElement>) => (
   <th
     className={cn(
-      'border-b border-border px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground',
+      'border-b border-border px-3 py-2.5 text-left text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground',
       className,
     )}
     {...props}

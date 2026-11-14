@@ -1,0 +1,78 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      body { width: 1200px; height: 630px; overflow: hidden; }
+      .card {
+        position: relative; width: 1200px; height: 630px; overflow: hidden;
+        background:
+          radial-gradient(900px 600px at 8% -20%, #17725a 0%, rgba(23,114,90,0) 60%),
+          radial-gradient(700px 500px at 105% 10%, rgba(198,242,78,0.20) 0%, rgba(198,242,78,0) 60%),
+          linear-gradient(135deg, #0b2a21 0%, #0f5f47 100%);
+        font-family: "Segoe UI", Inter, Arial, sans-serif; color: #f4f8f7;
+        padding: 64px 72px;
+      }
+      .grid {
+        position: absolute; inset: 0; opacity: 0.13;
+        background-image: linear-gradient(to right, #fff 1px, transparent 1px), linear-gradient(to bottom, #fff 1px, transparent 1px);
+        background-size: 64px 64px;
+      }
+      .brand { position: relative; display: flex; align-items: center; gap: 18px; }
+      .brandtext { font-size: 30px; font-weight: 700; letter-spacing: -0.8px; }
+      .tag { position: relative; margin-left: auto; font-size: 13px; letter-spacing: 0.18em; text-transform: uppercase; color: rgba(244,248,247,0.62); }
+      h1 { position: relative; margin-top: 96px; max-width: 830px; font-size: 66px; line-height: 1.05; letter-spacing: -2.6px; font-weight: 700; }
+      p { position: relative; margin-top: 26px; max-width: 700px; font-size: 23px; line-height: 1.45; color: rgba(244,248,247,0.78); }
+      .chips { position: absolute; left: 72px; bottom: 64px; display: flex; gap: 12px; }
+      .chip { border: 1px solid rgba(255,255,255,0.16); background: rgba(255,255,255,0.06); border-radius: 999px; padding: 11px 18px; font-size: 16px; color: rgba(244,248,247,0.88); }
+      .dot { display: inline-block; width: 7px; height: 7px; border-radius: 999px; background: #c6f24e; margin-right: 8px; vertical-align: 1px; }
+      .chart { position: absolute; right: 56px; bottom: 118px; width: 380px; height: 200px; opacity: 0.9; }
+      .panel { position: absolute; right: 56px; bottom: 338px; width: 344px; border-radius: 22px; border: 1px solid rgba(255,255,255,0.15); background: rgba(6,32,25,0.45); padding: 20px 22px; }
+      .panel .label { font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; color: rgba(244,248,247,0.55); }
+      .panel .value { margin-top: 8px; font-size: 40px; font-weight: 700; letter-spacing: -1.6px; }
+      .panel .sub { margin-top: 4px; font-size: 13px; color: rgba(244,248,247,0.62); }
+      .bar { margin-top: 14px; height: 6px; border-radius: 999px; background: rgba(255,255,255,0.12); overflow: hidden; }
+      .bar span { display: block; width: 64%; height: 100%; background: linear-gradient(90deg, #c6f24e, #7be0b0); border-radius: 999px; }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <div class="grid"></div>
+      <div class="brand">
+        <svg width="46" height="46" viewBox="0 0 64 64" fill="none">
+          <rect width="64" height="64" rx="16" fill="#0F5F47" stroke="rgba(255,255,255,0.16)"/>
+          <path d="M36.2 9 20 37.1h10.4L28.2 55 46 25.4H35.1L36.2 9Z" fill="#C6F24E"/>
+          <path d="M13 17.5h6M45 17.5h6" stroke="#F4F8F7" stroke-width="3" stroke-linecap="round"/>
+        </svg>
+        <div class="brandtext">WattNexa</div>
+        <div class="tag">Energy intelligence</div>
+      </div>
+      <h1>Know exactly where your electricity bill is going.</h1>
+      <p>Live consumption, tariff-aware estimates and an energy assistant grounded in your own readings. Simulated data is always labelled.</p>
+
+      <div class="panel">
+        <div class="label">This month · estimate</div>
+        <div class="value">kWh → ₹</div>
+        <div class="sub">Progressive slabs applied, never averaged</div>
+        <div class="bar"><span></span></div>
+      </div>
+      <svg class="chart" viewBox="0 0 380 200" fill="none">
+        <defs>
+          <linearGradient id="fill" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#C6F24E" stop-opacity="0.35"/>
+            <stop offset="1" stop-color="#C6F24E" stop-opacity="0"/>
+          </linearGradient>
+        </defs>
+        <path d="M0 160 C40 150 55 90 95 104 C135 118 150 150 190 132 C230 114 240 58 282 70 C324 82 340 42 380 26 V200 H0 Z" fill="url(#fill)"/>
+        <path d="M0 160 C40 150 55 90 95 104 C135 118 150 150 190 132 C230 114 240 58 282 70 C324 82 340 42 380 26" stroke="#C6F24E" stroke-width="3" stroke-linecap="round"/>
+      </svg>
+
+      <div class="chips">
+        <div class="chip"><span class="dot"></span>Hardware &amp; simulated data labelled</div>
+        <div class="chip">CSV &amp; PDF exports</div>
+        <div class="chip">Household-scoped access</div>
+      </div>
+    </div>
+  </body>
+</html>

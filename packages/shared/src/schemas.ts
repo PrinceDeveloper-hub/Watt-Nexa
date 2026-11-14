@@ -142,8 +142,12 @@ export const tariffSchema = z.object({
 export const applianceSchema = z.object({
   name: z.string().trim().min(1).max(80),
   category: z.string().trim().min(1).max(40),
-  ratedPowerW: z.coerce.number().min(0).max(100_000),
+  brand: z.string().trim().min(1).max(120).optional(),
+  model: z.string().trim().min(1).max(120).optional(),
+  installationDate: z.string().trim().optional(),
+  ratedPowerW: z.coerce.number().min(0).max(100_000).optional(),
   estimatedHoursPerDay: z.coerce.number().min(0).max(24).default(1),
+  isMeasured: z.boolean().default(false),
   homeId: z.string().uuid(),
 });
 

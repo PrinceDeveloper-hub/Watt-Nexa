@@ -11,15 +11,14 @@ import { wattbotRouter } from '../modules/wattbot.routes';
 import { adminRouter } from '../modules/admin.routes';
 import { publicRouter } from '../modules/public.routes';
 import { subscriptionsRouter } from '../modules/subscriptions.routes';
-import { reportsRouter } from '../modules/reports.routes';
-import { devRouter } from '../modules/dev.routes';
-
+import { reportsRouter } from '../modules/reports.routes';import { devRouter } from '../modules/dev.routes';
 export const apiRouter = Router();
 
 apiRouter.use('/auth', authRouter);
 apiRouter.use('/users', usersRouter);
 apiRouter.use('/homes', homesRouter);
 apiRouter.use('/devices', devicesRouter);
+apiRouter.use('/appliances', applianceRouter);
 apiRouter.use('/telemetry', telemetryRouter);
 apiRouter.use('/energy', energyRouter);
 apiRouter.use('/billing', billingRouter);

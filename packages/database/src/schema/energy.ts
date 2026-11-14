@@ -293,11 +293,19 @@ export const appliances = mysqlTable(
       .notNull()
       .references(() => homes.id, { onDelete: 'cascade' }),
     name: varchar('name', { length: 120 }).notNull(),
-    category: varchar('category', { length: 40 }).notNull(),
+    category: varchar('category', { length: 40 }).notNull().default('other'),
+    brand: varchar('brand', { length: 120 }).notNull().default(''),
+    model: varchar('model', { length: 120 }).notNull().default(''),
+    installationDate: timestamp('installation_date', { mode: 'date', fsp: 3 }),
     ratedPowerW: double('rated_power_w').notNull().default(0),
     estimatedHoursPerDay: double('estimated_hours_per_day').notNull().default(0),
-    /** true only when usage is backed by measured data. */
+    /**
+     * true only when usage is backed by measured data.
+     */
     isMeasured: boolean('is_measured').notNull().default(false),
+    lastServiceDate: timestamp('last_service_date', { mode: 'date', fsp: 3 }),
+    recommendedServiceIntervalDays: int('recommended_service_interval_days').notNull().default(30),
+    maintenanceNotes: text('maintenance_notes'),
     ...timestamps,
     ...softDelete,
   },

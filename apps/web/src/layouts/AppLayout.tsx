@@ -1,51 +1,75 @@
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import {
-  BarChart3,
+  ArrowUpRight,
   Bell,
-  Gauge,
+  Cpu,
   LayoutDashboard,
+  LineChart,
   LogOut,
   Menu,
   Moon,
-  ReceiptIndianRupee,
-  Settings as SettingsIcon,
-  Shield,
+  ReceiptText,
+  Settings2,
+  ShieldCheck,
+  Sparkles,
   Sun,
-  Cpu,
   X,
 } from 'lucide-react';
-import { useState } from 'react';
-import { NavLink, Outlet, useLocation } from 'react-router-dom';
-import { Badge } from '@/components/ui/feedback';
+import type { LucideIcon } from 'lucide-react';
+import { Suspense, useEffect, useState } from 'react';
+import { Link, NavLink, useLocation, useOutlet } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { BrandLogo } from '@/components/BrandLogo';
 import { FloatingWattbot, NotificationCenter } from '@/components/FloatingWidgets';
+import { Seo } from '@/components/seo';
+import { PageLoading } from '@/components/skeletons';
 import { useAuth } from '@/providers/auth-provider';
 import { useTheme } from '@/providers/theme-provider';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { useRealtime } from '@/lib/socket';
 import { cn, initials } from '@/lib/utils';
 import type { WattbotPage } from '@wattnexa/shared';
 
 function wattbotPage(pathname: string): WattbotPage {
-  if (pathname.startsWith('/app/energy')) return 'energy';
-  if (pathname.startsWith('/app/devices')) return 'devices';
-  if (pathname.startsWith('/app/billing')) return 'billing';
-  if (pathname.startsWith('/app/alerts')) return 'alerts';
-  if (pathname.startsWith('/app/settings')) return 'settings';
-  if (pathname.startsWith('/app/admin')) return 'admin';
-  if (pathname === '/app' || pathname === '/app/') return 'dashboard';
+  if (pathname.startsWith('/energy-analytics')) return 'energy';
+  if (pathname.startsWith('/devices')) return 'devices';
+  if (pathname.startsWith('/billing')) return 'billing';
+  if (pathname.startsWith('/alerts')) return 'alerts';
+  if (pathname.startsWith('/settings')) return 'settings';
+  if (pathname.startsWith('/admin')) return 'admin';
+  if (pathname === '/dashboard') return 'dashboard';
   return 'other';
 }
 
-const navItems = [
-  { to: '/app', label: 'Overview', icon: LayoutDashboard, end: true },
-  { to: '/app/devices', label: 'Devices', icon: Cpu },
-  { to: '/app/energy', label: 'Energy', icon: BarChart3 },
-  { to: '/app/billing', label: 'Billing', icon: ReceiptIndianRupee },
-  { to: '/app/alerts', label: 'Alerts', icon: Bell },
-  { to: '/app/settings', label: 'Settings', icon: SettingsIcon },
+interface NavItem {
+  to: string;
+  label: string;
+  icon: LucideIcon;
+  end?: boolean;
+}
+
+const primaryNav: NavItem[] = [
+  { to: '/dashboard', label: 'Overview', icon: LayoutDashboard, end: true },
+  { to: '/devices', label: 'Devices', icon: Cpu },
+  { to: '/energy-analytics', label: 'Energy analytics', icon: LineChart },
+  { to: '/billing', label: 'Billing', icon: ReceiptText },
+  { to: '/wattbot', label: 'WattBot', icon: Sparkles },
+  { to: '/alerts', label: 'Alerts', icon: Bell },
+  { to: '/settings', label: 'Settings', icon: Settings2 },
 ];
+
+const pageLabels: Record<string, string> = {
+  '/dashboard': 'Overview',
+  '/devices': 'Devices',
+  '/energy-analytics': 'Energy analytics',
+  '/billing': 'Billing',
+  '/wattbot': 'WattBot',
+  '/alerts': 'Alerts',
+  '/settings': 'Settings',
+  '/admin': 'Admin',
+  '/403': 'Access denied',
+};
 
 interface NotificationSnapshotItem {
   id: string;
@@ -93,6 +117,39 @@ function isRealtimeNotification(payload: unknown): payload is {
   );
 }
 
+function SidebarLink({ item, onNavigate, badge }: { item: NavItem; onNavigate?: () => void; badge?: number }) {
+  return (
+    <NavLink to={item.to} end={item.end} onClick={onNavigate} className="group relative block">
+      {({ isActive }) => (
+        <span
+          className={cn(
+            'relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] transition-colors duration-200',
+            isActive ? 'text-primary' : 'text-muted-foreground hover:text-foreground',
+          )}
+        >
+          {isActive ? (
+            <motion.span
+              layoutId="app-nav-active"
+              transition={{ type: 'spring', stiffness: 380, damping: 34 }}
+              className="absolute inset-0 rounded-xl border border-primary/15 bg-primary/[0.08]"
+            />
+          ) : (
+            <span className="absolute inset-0 rounded-xl opacity-0 transition-opacity duration-200 group-hover:bg-muted/60 group-hover:opacity-100" />
+          )}
+          <item.icon className="relative h-4 w-4 shrink-0" />
+          <span className="relative min-w-0 flex-1 truncate font-medium">{item.label}</span>
+          {badge ? (
+            <span className="relative flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-semibold text-destructive-foreground">
+              {badge > 99 ? '99+' : badge}
+            </span>
+          ) : null}
+          {isActive ? <span className="relative h-1 w-1 rounded-full bg-accent" /> : null}
+        </span>
+      )}
+    </NavLink>
+  );
+}
+
 export function AppLayout() {
   const { user, logout } = useAuth();
   const { theme, toggle } = useTheme();
@@ -101,14 +158,17 @@ export function AppLayout() {
   const [wattbotOpen, setWattbotOpen] = useState(false);
   const [wattbotPrompt, setWattbotPrompt] = useState<{ key: number; text: string } | null>(null);
   const location = useLocation();
+  const outlet = useOutlet();
   const queryClient = useQueryClient();
+  const reducedMotion = useReducedMotion();
 
   const notifications = useQuery({
     queryKey: ['notifications'],
     queryFn: () => api.get<NotificationSnapshot>('/alerts/notifications'),
     refetchInterval: 60_000,
   });
-  useRealtime({
+
+  const { connected } = useRealtime({
     'notification:new': (payload) => {
       if (isRealtimeNotification(payload)) {
         queryClient.setQueryData<NotificationSnapshot>(['notifications'], (current) => {
@@ -141,71 +201,89 @@ export function AppLayout() {
     connect: () => void queryClient.invalidateQueries({ queryKey: ['notifications'] }),
   });
 
+  useEffect(() => {
+    setOpen(false);
+    setNotificationsOpen(false);
+  }, [location.pathname]);
+
   const isAdmin = user && ['admin', 'super_admin', 'support_agent'].includes(user.role);
+  const unread = notifications.data?.unread ?? 0;
+  const currentLabel = pageLabels[location.pathname] ?? 'Workspace';
 
   const sidebar = (
     <div className="flex h-full flex-col">
-      <div className="flex h-16 items-center px-5">
-        <BrandLogo className="h-9 w-[162px]" />
+      <div className="flex h-[72px] items-center px-5">
+        <Link to="/dashboard" aria-label="WattNexa overview">
+          <BrandLogo className="h-8 w-[150px]" />
+        </Link>
       </div>
 
-      <nav className="flex-1 space-y-1 px-3 py-2">
-        {navItems.map((item) => (
-          <NavLink
-            key={item.to}
-            to={item.to}
-            end={item.end}
-            onClick={() => setOpen(false)}
-            className={({ isActive }) =>
-              cn(
-                'flex items-center justify-between rounded-lg px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground',
-                isActive && 'bg-primary/10 font-medium text-primary hover:bg-primary/15 hover:text-primary',
-              )
-            }
-          >
-            <span className="flex items-center gap-2.5">
-              <item.icon className="h-4 w-4" />
-              {item.label}
-            </span>
-            {item.label === 'Alerts' && notifications.data?.unread ? (
-              <Badge variant="danger">{notifications.data.unread}</Badge>
-            ) : null}
-          </NavLink>
+      <nav className="flex-1 space-y-1 px-3 py-2" aria-label="Main navigation">
+        <p className="eyebrow px-3 pb-2 pt-1">Workspace</p>
+        {primaryNav.slice(0, 4).map((item) => (
+          <SidebarLink key={item.to} item={item} onNavigate={() => setOpen(false)} />
         ))}
-        {isAdmin ? (
-          <NavLink
-            to="/app/admin"
-            onClick={() => setOpen(false)}
-            className={({ isActive }) =>
-              cn(
-                'flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground',
-                isActive && 'bg-primary/10 font-medium text-primary',
-              )
-            }
-          >
-            <Shield className="h-4 w-4" />
-            Admin
-          </NavLink>
-        ) : null}
+        <p className="eyebrow px-3 pb-2 pt-4">Intelligence</p>
+        {primaryNav.slice(4, 6).map((item) => (
+          <SidebarLink
+            key={item.to}
+            item={item}
+            onNavigate={() => setOpen(false)}
+            badge={item.label === 'Alerts' ? unread : undefined}
+          />
+        ))}
+        <div className="pt-4">
+          <p className="eyebrow px-3 pb-2">Account</p>
+          {primaryNav.slice(6).map((item) => (
+            <SidebarLink key={item.to} item={item} onNavigate={() => setOpen(false)} />
+          ))}
+          {isAdmin ? (
+            <SidebarLink
+              item={{ to: '/admin', label: 'Admin', icon: ShieldCheck }}
+              onNavigate={() => setOpen(false)}
+            />
+          ) : null}
+        </div>
       </nav>
 
-      <div className="border-t border-border p-3">
-        <div className="flex items-center gap-2.5 rounded-lg px-2 py-2">
-          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/15 text-xs font-semibold text-primary">
+      <div className="px-3 pb-3">
+        <Link
+          to="/wattbot"
+          onClick={() => setOpen(false)}
+          className="group relative block overflow-hidden rounded-2xl border border-primary/15 bg-primary/[0.04] p-3.5 transition-colors hover:border-primary/30"
+        >
+          <span className="pointer-events-none absolute -right-6 -top-8 h-20 w-20 rounded-full bg-accent/25 blur-2xl" />
+          <span className="relative flex items-center gap-2 text-xs font-semibold text-primary">
+            <Sparkles className="h-3.5 w-3.5" />
+            WattBot
+            <ArrowUpRight className="ml-auto h-3.5 w-3.5 opacity-60 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
+          </span>
+          <span className="relative mt-1 block text-[11px] leading-relaxed text-muted-foreground">
+            Ask what moved your bill, grounded in this household's readings.
+          </span>
+        </Link>
+      </div>
+
+      <div className="border-t border-border/70 p-3">
+        <div className="flex items-center gap-2.5 rounded-xl px-2 py-2">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary ring-1 ring-primary/15">
             {user ? initials(user.name) : '—'}
           </span>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-xs font-medium">{user?.name}</p>
+            <p className="truncate text-xs font-semibold">{user?.name}</p>
             <p className="truncate text-[11px] text-muted-foreground">{user?.email}</p>
           </div>
-        </div>
-        <div className="mt-1 flex gap-1">
-          <Button variant="ghost" size="sm" className="flex-1 justify-start" onClick={() => void logout()}>
-            <LogOut />
-            Sign out
-          </Button>
-          <Button variant="ghost" size="icon" onClick={toggle} aria-label="Toggle theme">
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={toggle} aria-label="Toggle theme">
             {theme === 'dark' ? <Sun /> : <Moon />}
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 text-muted-foreground hover:text-destructive"
+            onClick={() => void logout()}
+            aria-label="Sign out"
+          >
+            <LogOut />
           </Button>
         </div>
       </div>
@@ -214,41 +292,100 @@ export function AppLayout() {
 
   return (
     <div className="min-h-screen bg-background">
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 border-r border-border bg-surface lg:block">
+      <Seo
+        title={`${currentLabel} · WattNexa`}
+        description="Private WattNexa workspace. Household energy readings, devices, billing estimates and alerts are visible only to authorised account members."
+        path={location.pathname}
+        noindex
+      />
+      <a
+        href="#app-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-primary focus:px-3 focus:py-2 focus:text-xs focus:text-primary-foreground"
+      >
+        Skip to content
+      </a>
+      <div className="pointer-events-none fixed inset-x-0 top-0 h-[420px] bg-gradient-to-b from-primary/[0.035] to-transparent" />
+
+      <aside className="fixed inset-y-0 left-0 z-30 hidden w-[264px] border-r border-border/70 bg-surface/70 backdrop-blur-xl lg:block">
         {sidebar}
       </aside>
 
-      {open ? (
-        <div className="fixed inset-0 z-40 lg:hidden">
-          <button
-            className="absolute inset-0 bg-black/60"
-            aria-label="Close navigation"
-            onClick={() => setOpen(false)}
-          />
-          <aside className="absolute inset-y-0 left-0 w-64 border-r border-border bg-surface">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="absolute right-2 top-3"
-              onClick={() => setOpen(false)}
+      <AnimatePresence>
+        {open ? (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-40 lg:hidden"
+          >
+            <button
+              className="absolute inset-0 bg-secondary/50 backdrop-blur-sm"
               aria-label="Close navigation"
+              onClick={() => setOpen(false)}
+            />
+            <motion.aside
+              initial={{ x: reducedMotion ? 0 : -280 }}
+              animate={{ x: 0 }}
+              exit={{ x: reducedMotion ? 0 : -280 }}
+              transition={{ type: 'tween', duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+              className="absolute inset-y-0 left-0 w-[278px] border-r border-border bg-surface shadow-lift"
             >
-              <X />
-            </Button>
-            {sidebar}
-          </aside>
-        </div>
-      ) : null}
+              <Button
+                variant="ghost"
+                size="icon"
+                className="absolute right-2 top-4"
+                onClick={() => setOpen(false)}
+                aria-label="Close navigation"
+              >
+                <X />
+              </Button>
+              {sidebar}
+            </motion.aside>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
 
-      <div className="lg:pl-60">
-        <header className="sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-border bg-background/80 px-4 backdrop-blur-xl sm:px-6">
-          <Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setOpen(true)} aria-label="Open navigation">
+      <div className="relative lg:pl-[264px]">
+        <header className="sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-border/60 bg-background/85 px-4 backdrop-blur-xl sm:px-6 lg:px-8">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="lg:hidden"
+            onClick={() => setOpen(true)}
+            aria-label="Open navigation"
+          >
             <Menu />
           </Button>
-          <div className="flex flex-1 items-center gap-2">
-            <Gauge className="hidden h-4 w-4 text-muted-foreground sm:block" />
-            <span className="text-sm font-medium">Energy workspace</span>
-          </div>
+
+          <nav aria-label="Breadcrumb" className="flex min-w-0 flex-1 items-center gap-2 text-xs">
+            <Link to="/dashboard" className="hidden text-muted-foreground transition-colors hover:text-foreground sm:inline">
+              Workspace
+            </Link>
+            <span className="hidden text-border sm:inline" aria-hidden="true">
+              /
+            </span>
+            <span className="truncate font-medium text-foreground" aria-current="page">
+              {currentLabel}
+            </span>
+          </nav>
+
+          <span
+            className={cn(
+              'hidden items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-medium sm:inline-flex',
+              connected
+                ? 'border-primary/20 bg-primary/[0.06] text-primary'
+                : 'border-border bg-muted/50 text-muted-foreground',
+            )}
+            title={
+              connected
+                ? 'Realtime updates are connected'
+                : 'Realtime updates are reconnecting; readings still refresh on a timer'
+            }
+          >
+            <span className={cn('live-dot', connected ? 'bg-primary text-primary' : 'bg-muted-foreground/50 text-muted-foreground')} />
+            {connected ? 'Live' : 'Reconnecting'}
+          </span>
+
           <NotificationCenter
             open={notificationsOpen}
             onOpenChange={setNotificationsOpen}
@@ -260,10 +397,27 @@ export function AppLayout() {
           <Button variant="ghost" size="icon" onClick={toggle} aria-label="Toggle theme" className="hidden sm:inline-flex">
             {theme === 'dark' ? <Sun /> : <Moon />}
           </Button>
+          <Link
+            to="/settings"
+            aria-label="Open settings"
+            className="ml-0.5 flex h-8 w-8 items-center justify-center rounded-full bg-secondary text-[11px] font-semibold text-secondary-foreground transition-transform hover:scale-105"
+          >
+            {user ? initials(user.name) : '—'}
+          </Link>
         </header>
 
-        <main className="mx-auto w-full max-w-7xl space-y-6 px-4 py-6 sm:px-6 lg:py-8">
-          <Outlet />
+        <main id="app-content" className="mx-auto w-full max-w-[1320px] px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.div
+              key={location.pathname}
+              initial={reducedMotion ? false : { opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={reducedMotion ? undefined : { opacity: 0, y: -4 }}
+              transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
+            >
+              <Suspense fallback={<PageLoading label="Loading page" />}>{outlet}</Suspense>
+            </motion.div>
+          </AnimatePresence>
         </main>
       </div>
 

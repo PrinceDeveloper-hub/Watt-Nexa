@@ -1,8 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="216" height="48" viewBox="0 0 216 48" fill="none">
-  <g stroke="#35D49B" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+<svg xmlns="http://www.w3.org/2000/svg" width="216" height="48" viewBox="0 0 216 48" fill="none" role="img" aria-label="WattNexa">
+  <g stroke="#7BE0B0" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
     <path d="M24 5 38 13v12c0 9-6 15-14 18C16 40 10 34 10 25V13L24 5Z"/>
     <path d="M18 27h5l4-9 4 9h5"/>
-    <path d="M10 19h5M33 19h5" stroke="#DDEBE8"/>
+    <path d="M10 19h5M33 19h5" stroke="#C6F24E"/>
   </g>
   <text x="52" y="31" fill="#F4F8F7" font-family="Inter, Arial, sans-serif" font-size="24" font-weight="700" letter-spacing="-0.8">WattNexa</text>
 </svg>

@@ -1,0 +1,24 @@
+{
+  "name": "WattNexa",
+  "short_name": "WattNexa",
+  "description": "Household electricity monitoring with tariff-aware bill estimates, honest analytics and a grounded energy assistant.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#F6F6F0",
+  "theme_color": "#0C1211",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/branding/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

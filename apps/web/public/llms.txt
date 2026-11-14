@@ -1,0 +1,40 @@
+# WattNexa
+
+> WattNexa is an electricity-monitoring platform for households. A clamp-on CT sensor and an ESP32 publish voltage, current, power and energy readings to the WattNexa API; the dashboard converts measured kWh into the amount the household actually pays using its own progressive tariff slabs, fixed charge and tax. Bill figures are estimates, never official bills, and simulated demo readings are always labelled.
+
+WattNexa is a web application (React dashboard, Node/Express API, MariaDB). It does not switch mains power or claim appliance-level attribution from a single whole-house sensor.
+
+## Public pages
+
+- [Home](/): product overview and the problem WattNexa addresses.
+- [Features](/features): monitoring, bill estimation, comparisons, alerts, WattBot and device security.
+- [How it works](/how-it-works): sensor installation, device pairing, telemetry transports and tariff setup.
+- [Pricing](/pricing): plan comparison, including which plans include WattBot and exports.
+- [FAQ](/faq): installation, data honesty, tariff configuration and device security questions.
+- [Resources](/blog): short notes on tariffs, sensors and kWh-to-rupee arithmetic.
+- [About](/about): the product's data-honesty commitments.
+- [Contact](/contact): sales, support and partnership contact.
+- [Privacy policy](/privacy) and [Terms](/terms): data handling, estimates disclaimer, device safety.
+
+## Product capabilities
+
+- Live voltage, current, active power, power factor, temperature and energy, with unavailable fields left empty instead of zero-filled.
+- Progressive slab tariff modelling, fixed charges, tax, month-to-date estimates and linear monthly projections.
+- Hourly, daily and monthly analytics, peak demand and standby floor, month-over-month comparison.
+- Threshold alerts for power, temperature, daily/monthly kWh and estimated bill, deduplicated per device.
+- Per-device bearer credentials (shown once, stored as SHA-256) and household-scoped access control.
+- Device status derived only from real traffic, with every transition recorded in device history.
+- WattBot: answers computed from a fixed, household-scoped fact sheet. When no AI provider is configured it answers deterministically and is labelled as data analysis.
+- CSV and PDF consumption exports.
+
+## Data honesty
+
+- Every telemetry row is tagged `hardware` or `simulated`; seeded and simulated data is visibly labelled.
+- Unavailable measurements are `NULL`, never `0`.
+- Cost surfaces state that the provider's bill is authoritative.
+- No savings claims without sufficient history; no appliance attribution from one whole-house CT.
+
+## Technical documentation
+
+- API reference (Swagger UI) is served by the API host at `/docs`.
+- The repository includes `docs/WATTBOT.md`, `docs/HARDWARE.md` and `docs/DEPLOYMENT.md` for the assistant contract, device/MQTT contract and deployment runbook.

@@ -1,4 +1,4 @@
-import { AlertTriangle, CheckCircle2, Info, XCircle } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Info, X, XCircle } from 'lucide-react';
 import * as React from 'react';
 import { cn } from '@/lib/utils';
 
@@ -24,11 +24,11 @@ const icons = {
   warning: AlertTriangle,
 };
 
-const styles: Record<ToastVariant, string> = {
-  success: 'border-primary/30 bg-primary/10 text-primary',
-  error: 'border-destructive/30 bg-destructive/10 text-destructive',
-  info: 'border-accent/30 bg-accent/10 text-accent',
-  warning: 'border-amber-500/30 bg-amber-500/10 text-amber-500',
+const styles: Record<ToastVariant, { icon: string; rule: string }> = {
+  success: { icon: 'bg-primary/10 text-primary', rule: 'bg-primary' },
+  error: { icon: 'bg-destructive/10 text-destructive', rule: 'bg-destructive' },
+  info: { icon: 'bg-accent/20 text-accent-foreground dark:text-accent', rule: 'bg-accent' },
+  warning: { icon: 'bg-warning/10 text-warning', rule: 'bg-warning' },
 };
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
@@ -62,26 +62,24 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
           return (
             <div
               key={item.id}
-              className={cn(
-                'pointer-events-auto flex items-start gap-3 rounded-xl border bg-card p-3 shadow-lift animate-in slide-in-from-bottom-2',
-                styles[item.variant],
-              )}
+              className="pointer-events-auto relative flex items-start gap-3 overflow-hidden rounded-2xl border border-border bg-card p-3.5 shadow-lift animate-in slide-in-from-bottom-2"
             >
-              <Icon className="mt-0.5 h-4 w-4 shrink-0" />
-              <div className="flex-1">
+              <span className={cn('absolute inset-y-0 left-0 w-0.5', styles[item.variant].rule)} />
+              <span className={cn('flex h-7 w-7 shrink-0 items-center justify-center rounded-lg', styles[item.variant].icon)}>
+                <Icon className="h-3.5 w-3.5" />
+              </span>
+              <div className="flex-1 pt-0.5">
                 <p className="text-xs font-semibold text-foreground">{item.title}</p>
                 {item.description ? (
-                  <p className="mt-0.5 text-[11px] leading-relaxed text-muted-foreground">
-                    {item.description}
-                  </p>
+                  <p className="mt-0.5 text-[11px] leading-relaxed text-muted-foreground">{item.description}</p>
                 ) : null}
               </div>
               <button
                 onClick={() => dismiss(item.id)}
-                className="text-muted-foreground transition-colors hover:text-foreground"
+                className="rounded-md p-0.5 text-muted-foreground transition-colors hover:text-foreground"
                 aria-label="Dismiss notification"
               >
-                <XCircle className="h-3.5 w-3.5" />
+                <X className="h-3.5 w-3.5" />
               </button>
             </div>
           );

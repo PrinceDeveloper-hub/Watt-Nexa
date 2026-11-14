@@ -1,27 +1,107 @@
 <!doctype html>
-<html lang="en" class="dark">
+<html lang="en-IN" class="dark">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>WattNexa — Know exactly where your electricity bill is going</title>
     <meta
       name="description"
-      content="WattNexa monitors your home's electricity in real time, estimates your bill from real tariff slabs and explains unusual consumption."
+      content="WattNexa monitors household electricity from a clamp-on sensor, prices every kWh with your own tariff slabs and explains what changed. Simulated data is always labelled."
     />
-    <meta name="theme-color" content="#070B14" />
+    <meta name="application-name" content="WattNexa" />
+    <meta name="apple-mobile-web-app-title" content="WattNexa" />
+
+    <link rel="canonical" href="%SITE_URL%/" />
+    <meta name="robots" content="index, follow" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="WattNexa" />
     <meta property="og:title" content="WattNexa — Know exactly where your electricity bill is going" />
     <meta
       property="og:description"
-      content="Live household energy monitoring with tariff-aware bill estimates and a grounded energy assistant, WattBot."
+      content="Live household energy monitoring, tariff-aware bill estimates and an assistant grounded in your own readings."
     />
-    <meta property="og:type" content="website" />
+    <meta property="og:url" content="%SITE_URL%/" />
+    <meta property="og:image" content="%SITE_URL%/branding/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="WattNexa — electricity monitoring with honest, tariff-aware estimates" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="WattNexa — Know exactly where your electricity bill is going" />
+    <meta
+      name="twitter:description"
+      content="Live household energy monitoring, tariff-aware bill estimates and an assistant grounded in your own readings."
+    />
+    <meta name="twitter:image" content="%SITE_URL%/branding/og-image.png" />
+
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#F6F6F0" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0C1211" />
+    <meta name="color-scheme" content="light dark" />
+
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/branding/apple-touch-icon.png" />
+    <link rel="manifest" href="/site.webmanifest" />
+
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sora:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
+
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "Organization",
+            "@id": "%SITE_URL%/#organization",
+            "name": "WattNexa",
+            "url": "%SITE_URL%/",
+            "logo": "%SITE_URL%/branding/apple-touch-icon.png",
+            "description": "WattNexa is an electricity-monitoring platform that turns household sensor readings into tariff-aware bill estimates."
+          },
+          {
+            "@type": "WebSite",
+            "@id": "%SITE_URL%/#website",
+            "url": "%SITE_URL%/",
+            "name": "WattNexa",
+            "description": "Household energy monitoring with honest analytics, tariff-aware bill estimates and a grounded energy assistant.",
+            "inLanguage": "en-IN",
+            "publisher": { "@id": "%SITE_URL%/#organization" }
+          },
+          {
+            "@type": "SoftwareApplication",
+            "@id": "%SITE_URL%/#application",
+            "name": "WattNexa",
+            "applicationCategory": "UtilitiesApplication",
+            "operatingSystem": "Web",
+            "url": "%SITE_URL%/",
+            "description": "Live electricity monitoring from a clamp-on sensor, priced with the household's own progressive tariff slabs. Estimates are explicitly labelled; simulated readings are always marked.",
+            "publisher": { "@id": "%SITE_URL%/#organization" }
+          }
+        ]
+      }
+    </script>
+
+    <script>
+      // Apply the stored/system theme before first paint to avoid a flash.
+      (function () {
+        try {
+          var stored = localStorage.getItem('wattnexa-theme');
+          var theme =
+            stored === 'light' || stored === 'dark'
+              ? stored
+              : window.matchMedia('(prefers-color-scheme: light)').matches
+                ? 'light'
+                : 'dark';
+          document.documentElement.classList.toggle('dark', theme === 'dark');
+          document.documentElement.style.colorScheme = theme;
+        } catch (error) {
+          /* localStorage can be unavailable in privacy modes; the dark default stands. */
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

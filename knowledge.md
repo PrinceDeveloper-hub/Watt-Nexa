@@ -40,7 +40,7 @@ packages/
   config/                 Zod-validated env (loads root .env by walking up from cwd)
   types/                  shared DTOs
   shared/                 tariff math, aggregation, ranges, formatters, Zod schemas, tests
-  database/               Drizzle schema (30 tables), migrations, seed, reset
+  database/               Drizzle schema (36 tables), migrations, seed, reset
 ```
 
 ## Commands
@@ -75,6 +75,22 @@ pnpm --filter @wattnexa/api kb:reindex   # rebuild WattBot knowledge chunks/vect
 - `pnpm lint` fails: no workspace defines a `lint` script and there is no ESLint config. Don't add one.
 - Demo user `demo@wattnexa.com` / `WattNexa@123`; Swagger at `/docs`; readiness at `/health/ready`.
 
+## Environment
+
+All variables live in `.env.example`; `@wattnexa/config` validates them with Zod and loads the root
+`.env` by walking up from the cwd. The ones that change behavior most:
+
+- `DATABASE_URL` — must be port 3306 to match Compose.
+- `SENSOR_MODE` (`simulated` | `hardware`), `OFFLINE_THRESHOLD_SECONDS` (default 120).
+- `MQTT_ENABLED` / `MQTT_URL` / `MQTT_TOPIC_PREFIX` — disabled by default; the adapter reports itself
+  disabled rather than pretending telemetry arrives.
+- `COOKIE_SAME_SITE` (`lax` | `none`) — `none` forces `Secure` and is required when the SPA and API
+  are on different sites; `CORS_ORIGINS` must list the frontend origin(s).
+- `WATTBOT_PROVIDER` (`none` | `openai` | `anthropic`), `WATTBOT_TIMEOUT_MS`,
+  `WATTBOT_EMBEDDING_PROVIDER` — see the WattBot section.
+- `SMTP_*` — when unset, mail goes to the in-memory outbox at `/api/v1/dev/outbox`.
+- `VITE_API_URL` / `VITE_SOCKET_URL` — the only frontend-visible vars; everything else stays API-only.
+
 ## Data model highlights
 
 - `device_telemetry` — raw readings, indexed on `(device_id, recorded_at)`. Nullable measurement
@@ -86,6 +102,9 @@ pnpm --filter @wattnexa/api kb:reindex   # rebuild WattBot knowledge chunks/vect
 - `wattbot_conversations` / `wattbot_messages` — persisted per user, scoped by `userId`.
 - `subscription_plans` — includes `wattbotMessagesPerDay` (Free 0 = not included, Plus 20, Pro 100).
 - `audit_logs` — actor, action, resource for administrative changes.
+- Schema files: `core.ts` (users/sessions/verification), `energy.ts` (homes/devices/telemetry/
+  tariffs/appliances), `platform.ts` (alerts, billing, WattBot, support, CMS-ish tables, settings),
+  `_columns.ts` (shared column helpers).
 
 ## Energy & billing semantics
 

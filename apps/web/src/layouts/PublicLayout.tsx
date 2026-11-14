@@ -1,11 +1,15 @@
 import { Menu, Moon, Sun, X } from 'lucide-react';
-import { useState } from 'react';
-import { Link, NavLink, Outlet } from 'react-router-dom';
+import { Suspense, useMemo, useState } from 'react';
+import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/providers/auth-provider';
 import { useTheme } from '@/providers/theme-provider';
 import { cn } from '@/lib/utils';
 import { BrandLogo } from '@/components/BrandLogo';
+import { Breadcrumbs } from '@/components/breadcrumbs';
+import { Seo } from '@/components/seo';
+import { PageLoading } from '@/components/skeletons';
+import { API_DOCS_URL, breadcrumbTrail, publicMeta, schemaForPath } from '@/lib/site';
 
 const links = [
   { to: '/features', label: 'Features' },
@@ -19,23 +23,43 @@ export function PublicLayout() {
   const { theme, toggle } = useTheme();
   const { isAuthenticated } = useAuth();
   const [open, setOpen] = useState(false);
+  const location = useLocation();
+
+  const meta = publicMeta(location.pathname);
+  const trail = breadcrumbTrail(location.pathname);
+  const jsonLd = useMemo(() => schemaForPath(location.pathname), [location.pathname]);
 
   return (
     <div className="min-h-screen bg-background">
+      <Seo
+        title={meta.title}
+        description={meta.description}
+        path={location.pathname}
+        type={location.pathname.startsWith('/blog/') ? 'article' : 'website'}
+        jsonLd={jsonLd}
+      />
+
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-primary focus:px-3 focus:py-2 focus:text-xs focus:text-primary-foreground"
+      >
+        Skip to content
+      </a>
+
       <header className="sticky top-0 z-40 border-b border-border/70 bg-background/80 backdrop-blur-xl">
         <div className="container flex h-16 items-center justify-between gap-4">
-          <Link to="/" className="flex items-center">
+          <Link to="/" className="flex items-center" aria-label="WattNexa home">
             <BrandLogo className="h-9 w-[162px]" />
           </Link>
 
-          <nav className="hidden items-center gap-1 md:flex">
+          <nav className="hidden items-center gap-1 md:flex" aria-label="Public navigation">
             {links.map((link) => (
               <NavLink
                 key={link.to}
                 to={link.to}
                 className={({ isActive }) =>
                   cn(
-                    'rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:text-foreground',
+                    'rounded-lg px-3 py-2 text-sm text-muted-foreground transition-colors hover:text-foreground',
                     isActive && 'text-foreground',
                   )
                 }
@@ -51,7 +75,7 @@ export function PublicLayout() {
             </Button>
             {isAuthenticated ? (
               <Button asChild size="sm">
-                <Link to="/app">Dashboard</Link>
+                <Link to="/dashboard">Dashboard</Link>
               </Button>
             ) : (
               <>
@@ -78,7 +102,7 @@ export function PublicLayout() {
 
         {open ? (
           <div className="border-t border-border bg-background md:hidden">
-            <nav className="container flex flex-col py-2">
+            <nav className="container flex flex-col py-2" aria-label="Public navigation">
               {links.map((link) => (
                 <NavLink
                   key={link.to}
@@ -94,8 +118,24 @@ export function PublicLayout() {
         ) : null}
       </header>
 
-      <main>
-        <Outlet />
+      {trail.length > 0 ? (
+        <div className="border-b border-border/60">
+          <div className="container py-2.5">
+            <Breadcrumbs items={trail} />
+          </div>
+        </div>
+      ) : null}
+
+      <main id="main-content">
+        <Suspense
+          fallback={
+            <div className="container py-12">
+              <PageLoading label="Loading page" />
+            </div>
+          }
+        >
+          <Outlet />
+        </Suspense>
       </main>
 
       <footer className="border-t border-border bg-surface">
@@ -152,11 +192,18 @@ export function PublicLayout() {
                   Terms &amp; conditions
                 </Link>
               </li>
-              <li>
-                <a href="/docs" className="text-muted-foreground hover:text-foreground">
-                  API documentation
-                </a>
-              </li>
+              {API_DOCS_URL ? (
+                <li>
+                  <a
+                    href={API_DOCS_URL}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-muted-foreground hover:text-foreground"
+                  >
+                    API documentation
+                  </a>
+                </li>
+              ) : null}
             </ul>
           </div>
         </div>

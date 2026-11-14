@@ -15,7 +15,6 @@ import {
   Zap,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { ComparisonBarChart } from '@/components/charts';
 import { Badge } from '@/components/ui/feedback';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -163,7 +162,21 @@ export function Landing() {
                 </div>
                 <div className="p-4">
                   <p className="mb-2 text-xs text-muted-foreground">Consumption this week</p>
-                  <ComparisonBarChart data={previewSeries} height={190} />
+                  <div className="flex h-[138px] items-end gap-2 px-1" aria-hidden="true">
+                    {previewSeries.map((day) => {
+                      const max = Math.max(...previewSeries.map((entry) => entry.kwh));
+                      return (
+                        <div key={day.label} className="flex flex-1 flex-col items-center justify-end gap-1.5">
+                          <div
+                            className="w-full rounded-t-md bg-gradient-to-t from-primary/15 to-primary/80"
+                            style={{ height: `${(day.kwh / max) * 100}%` }}
+                          />
+                          <span className="text-[9px] text-muted-foreground">{day.label}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <p className="mt-2 text-center text-[9px] text-muted-foreground">Illustrative preview · not live data</p>
                 </div>
                 <div className="flex items-center justify-between border-t border-border bg-surface px-5 py-3 text-[11px] text-muted-foreground">
                   <span className="flex items-center gap-1.5">
@@ -334,7 +347,7 @@ export function Landing() {
               {plan.slug === 'plus' ? (
                 <Badge className="absolute right-4 top-4">Most popular</Badge>
               ) : null}
-              <p className="text-sm font-semibold">{plan.name}</p>
+              <h3 className="text-sm font-semibold">{plan.name}</h3>
               <p className="mt-1 text-xs text-muted-foreground">{plan.description}</p>
               <p className="mt-4 text-3xl font-bold tracking-tight">
                 {plan.priceMonthly === 0 ? 'Free' : formatCurrency(plan.priceMonthly, plan.currency)}
@@ -358,36 +371,33 @@ export function Landing() {
         </div>
       </section>
 
-      {/* Testimonials */}
+      {/* Data honesty */}
       <section className="container border-t border-border py-16">
         <div className="mx-auto max-w-2xl text-center">
-          <Badge variant="outline" className="mb-4">Early access feedback</Badge>
-          <h2 className="text-2xl font-bold tracking-tight">What early households are saying</h2>
+          <Badge variant="outline" className="mb-4">Data honesty</Badge>
+          <h2 className="text-2xl font-bold tracking-tight">Three rules the product will not break</h2>
           <p className="mt-2 text-xs text-muted-foreground">
-            Sample content from the early-access programme. Names are withheld until participants approve publication.
+            These are enforced in the schema and the interface, not just in the marketing copy.
           </p>
         </div>
         <div className="mt-8 grid gap-4 md:grid-cols-3">
           {[
             {
-              quote:
-                'The slab breakdown was the first time I understood why my last 60 units cost twice as much as my first 60.',
-              role: 'Apartment owner, Bengaluru',
+              title: 'Measure only what was sensed',
+              body: 'If the hardware does not report voltage, temperature or power factor, the field stays empty and the interface says unavailable. It is never replaced with a zero.',
             },
             {
-              quote:
-                'It caught a water heater left on overnight. That single alert paid for a year of monitoring.',
-              role: 'Homeowner, Pune',
+              title: 'Label every estimate',
+              body: 'Costs are derived from the tariff you configure. Every surface carrying money says the provider\u2019s bill is authoritative, and simulated readings are marked at the row and in the UI.',
             },
             {
-              quote:
-                'I like that it refuses to show voltage when the sensor cannot measure it instead of making a number up.',
-              role: 'Electronics engineer, Hyderabad',
+              title: 'Never invent savings',
+              body: 'No percentage saved, no appliance attribution from a single whole-house CT, and no reading claimed when the sensor has not reported. Pairing alone is not treated as a live connection.',
             },
           ].map((item) => (
-            <Card key={item.role} className="p-6">
-              <p className="text-sm leading-relaxed text-muted-foreground">&ldquo;{item.quote}&rdquo;</p>
-              <p className="mt-4 text-[11px] font-medium">{item.role}</p>
+            <Card key={item.title} className="p-6">
+              <h3 className="text-sm font-semibold">{item.title}</h3>
+              <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{item.body}</p>
             </Card>
           ))}
         </div>
@@ -403,9 +413,9 @@ export function Landing() {
           <div className="mt-8 space-y-3">
             {(faqs.data ?? []).slice(0, 4).map((faq) => (
               <details key={faq.id} className="group rounded-xl border border-border bg-card p-5">
-                <summary className="cursor-pointer list-none text-sm font-medium marker:hidden">
+                <summary className="cursor-pointer list-none marker:hidden">
                   <span className="flex items-center justify-between gap-4">
-                    {faq.question}
+                    <h3 className="text-sm font-medium">{faq.question}</h3>
                     <span className="text-muted-foreground transition-transform group-open:rotate-45">+</span>
                   </span>
                 </summary>

@@ -45,25 +45,59 @@ Browser ──HTTPS──► Vercel (React SPA)  ──HTTPS + WSS──►  api
 | --- | --- | --- |
 | `VITE_API_URL` | `https://api.example.com` | Baked into the bundle at build time |
 | `VITE_SOCKET_URL` | `https://api.example.com` | Same host as the API; Socket.IO shares the origin |
+| `VITE_SITE_URL` | `https://app.example.com` | Public origin for canonical tags, Open Graph URLs, `sitemap.xml` and `robots.txt` |
 
-`VITE_*` values are compiled into the static bundle. Changing them requires a new deployment.
+`VITE_*` values are compiled into the static bundle. Changing them requires a new deployment. The
+build falls back to `https://wattnexa.example` and logs a warning when `VITE_SITE_URL` is missing;
+always set it before a production build.
 
 ### SPA routing
 
 `vercel.json` contains the fallback rewrite:
 
 ```json
-{ "source": "/((?!assets/).*)", "destination": "/index.html" }
+{ "source": "/(.*)", "destination": "/index.html" }
 ```
 
-Client-side routes (`/app/devices`, `/pricing`, …) therefore resolve on hard refresh and direct
-navigation, while hashed assets keep their immutable cache headers.
+Client-side routes (`/devices`, `/pricing`, …) therefore resolve on hard refresh and direct
+navigation, while hashed assets keep their immutable cache headers. `sitemap.xml`, `robots.txt` and
+`llms.txt` are served as real static files before the SPA fallback applies.
 
-### Custom domain
+Permanent redirects map the legacy `/app/*` URLs to the current structure (`/dashboard`, `/devices`,
+`/energy-analytics`, `/billing`, `/wattbot`, `/alerts`, `/settings`, `/admin`).
 
-Project Settings → Domains → add `app.example.com`. Then add that exact origin to the API's
-`CORS_ORIGINS` (see below). Preview deployments use generated `*.vercel.app` hostnames — cover them
-with a wildcard entry rather than editing the allow-list per push.
+### SEO files
+
+The Vite build emits:
+
+- `sitemap.xml` — public pages only, absolute URLs from `VITE_SITE_URL`.
+- `robots.txt` — allows public pages, disallows every authenticated route, references the sitemap.
+- `llms.txt` — static description of the product and its public resources.
+
+Authenticated routes also set `noindex, nofollow` from the client and carry an `X-Robots-Tag` header
+from `vercel.json`.
+
+### Custom domain (requires your approval)
+
+No domain has been purchased and no DNS records are changed by this repository. To attach a domain,
+perform these steps yourself once you approve the name:
+
+1. Buy/obtain the domain from your registrar.
+2. In Vercel: **Project Settings → Domains → Add**, enter the apex (`example.com`) and/or `app.example.com`.
+3. At the registrar, create the records Vercel shows. Typically:
+   - `A @ 76.76.21.21` for the apex, **or** `ALIAS/ANAME @ cname.vercel-dns.com` if supported.
+   - `CNAME app cname.vercel-dns.com` for the `app` subdomain.
+4. Wait for Vercel to show **Valid Configuration** (DNS propagation can take minutes to hours).
+5. Set `VITE_SITE_URL=https://app.example.com` (no trailing slash) in **Production** and **Preview**,
+   then redeploy so canonical URLs, sitemap and social cards use the real origin.
+6. Add the same origin to the API's `CORS_ORIGINS`; set `WEB_URL` to it. For a cross-site SPA/API
+   topology also set `COOKIE_SAME_SITE=none` and `COOKIE_SECURE=true`.
+7. Submit `https://app.example.com/sitemap.xml` in Google Search Console and Bing Webmaster Tools
+   after the first production deploy. Do not submit authenticated routes.
+
+Preview deployments use generated `*.vercel.app` hostnames; set `VITE_SITE_URL` for Preview to the
+preview origin only if you need correct canonical tags there. Never let preview URLs be indexed —
+keep the `noindex` headers and do not add preview hosts to the sitemap.
 
 ---
 
@@ -245,6 +279,11 @@ Run before every release, manually:
    device flipping to `online` and a `connected` entry in its connection history.
 10. `/health` returns `200`; `/docs` loads (disable or protect it publicly if preferred).
 11. Dashboard renders, WattBot answers, and a CSV/PDF export downloads.
+12. `/sitemap.xml` lists only public pages with the production origin; `/robots.txt` disallows the
+    app routes and references the sitemap; `/llms.txt` returns the static document.
+13. `curl -I https://app.example.com/dashboard` carries `X-Robots-Tag: noindex, nofollow`.
+14. A legacy URL such as `/app/energy` returns a permanent redirect to `/energy-analytics`.
+15. `apps/web/dist` contains no `.map` files (production source maps are disabled).
 
 ---
 

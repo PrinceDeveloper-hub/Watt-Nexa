@@ -1,66 +1,135 @@
-import type { LucideIcon } from 'lucide-react';
-import { FlaskConical } from 'lucide-react';
+import { ArrowDownRight, ArrowUpRight, FlaskConical, Minus } from 'lucide-react';
 import type * as React from 'react';
-import { Badge, Skeleton } from '@/components/ui/feedback';
-import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/feedback';
 import { cn } from '@/lib/utils';
 
 export function PageHeader({
+  eyebrow,
   title,
   description,
   actions,
 }: {
+  eyebrow?: string;
   title: string;
   description?: string;
   actions?: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-      <div>
-        <h1 className="text-xl font-semibold tracking-tight">{title}</h1>
-        {description ? <p className="mt-1 text-sm text-muted-foreground">{description}</p> : null}
+    <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+      <div className="min-w-0">
+        {eyebrow ? <p className="eyebrow mb-2">{eyebrow}</p> : null}
+        <h1 className="display text-[26px] font-semibold leading-tight sm:text-[30px]">{title}</h1>
+        {description ? (
+          <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-muted-foreground">{description}</p>
+        ) : null}
       </div>
       {actions ? <div className="flex flex-wrap items-center gap-2">{actions}</div> : null}
+    </header>
+  );
+}
+
+export function TrendPill({
+  value,
+  positiveIsBad = true,
+  suffix = '%',
+  className,
+}: {
+  value: number | null;
+  positiveIsBad?: boolean;
+  suffix?: string;
+  className?: string;
+}) {
+  if (value == null || Number.isNaN(value)) {
+    return (
+      <span className={cn('inline-flex items-center gap-1 text-[11px] text-muted-foreground', className)}>
+        <Minus className="h-3 w-3" /> No comparison
+      </span>
+    );
+  }
+  const rising = value > 0;
+  const bad = positiveIsBad ? rising : !rising;
+  return (
+    <span
+      className={cn(
+        'inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[11px] font-medium',
+        bad ? 'bg-warning/10 text-warning' : 'bg-primary/10 text-primary',
+        className,
+      )}
+    >
+      {rising ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
+      {Math.abs(value).toFixed(0)}
+      {suffix}
+    </span>
+  );
+}
+
+export function Segmented<T extends string>({
+  options,
+  value,
+  onChange,
+  ariaLabel,
+  className,
+}: {
+  options: ReadonlyArray<{ value: T; label: string }>;
+  value: T;
+  onChange: (value: T) => void;
+  ariaLabel: string;
+  className?: string;
+}) {
+  return (
+    <div
+      role="group"
+      aria-label={ariaLabel}
+      className={cn(
+        'inline-flex items-center gap-0.5 rounded-xl border border-border/70 bg-muted/50 p-1',
+        className,
+      )}
+    >
+      {options.map((option) => {
+        const active = option.value === value;
+        return (
+          <button
+            key={option.value}
+            type="button"
+            aria-pressed={active}
+            onClick={() => onChange(option.value)}
+            className={cn(
+              'rounded-lg px-2.5 py-1.5 text-[11px] font-medium transition-all duration-200 sm:px-3 sm:text-xs',
+              active
+                ? 'bg-card text-foreground shadow-soft'
+                : 'text-muted-foreground hover:text-foreground',
+            )}
+          >
+            {option.label}
+          </button>
+        );
+      })}
     </div>
   );
 }
 
-export function MetricCard({
-  label,
-  value,
-  unit,
-  hint,
-  icon: Icon,
-  loading,
-  accent = false,
+export function BreakdownBar({
+  parts,
+  className,
 }: {
-  label: string;
-  value: string | number | null;
-  unit?: string;
-  hint?: string;
-  icon?: LucideIcon;
-  loading?: boolean;
-  accent?: boolean;
+  parts: Array<{ label: string; value: number; className: string }>;
+  className?: string;
 }) {
+  const total = parts.reduce((sum, part) => sum + Math.max(0, part.value), 0);
+  if (total <= 0) {
+    return <div className={cn('h-2 w-full rounded-full bg-muted', className)} />;
+  }
   return (
-    <Card className={cn('relative overflow-hidden p-5', accent && 'border-primary/25')}>
-      {accent ? (
-        <span className="pointer-events-none absolute -right-8 -top-10 h-24 w-24 rounded-full bg-primary/10 blur-2xl" />
-      ) : null}
-      <div className="flex items-start justify-between gap-3">
-        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
-        {Icon ? <Icon className="h-4 w-4 text-muted-foreground" /> : null}
-      </div>
-      {loading ? (
-        <Skeleton className="mt-3 h-7 w-24" />
-      ) : (
-        <p className="mt-2 text-2xl font-semibold tracking-tight">
-          {value ?? '—'}
-          {unit ? <span className="ml-1 text-sm font-medium text-muted-foreground">{unit}</span> : null}
-        </p>
-      )}
-      {hint ? <p className="mt-1 text-[11px] text-muted-foreground">{hint}</p> : null}
-    </Card>
+    <div className={cn('flex h-2 w-full gap-0.5 overflow-hidden rounded-full bg-muted', className)}>
+      {parts.map((part) => (
+        <span
+          key={part.label}
+          title={`${part.label}: ${((Math.max(0, part.value) / total) * 100).toFixed(0)}%`}
+          className={cn('h-full first:rounded-l-full last:rounded-r-full', part.className)}
+          style={{ width: `${(Math.max(0, part.value) / total) * 100}%` }}
+        />
+      ))}
+    </div>
   );
 }
 
@@ -68,13 +137,16 @@ export function SimulatedBadge({ simulated }: { simulated: boolean }) {
   if (!simulated) {
     return (
       <Badge variant="neutral">
-        <span className="mr-0.5 inline-block h-1.5 w-1.5 rounded-full bg-emerald-500" />
+        <span className="inline-block h-1.5 w-1.5 rounded-full bg-primary" />
         Hardware data
       </Badge>
     );
   }
   return (
-    <Badge variant="warning" title="These readings are generated by the built-in simulator, not a physical meter.">
+    <Badge
+      variant="warning"
+      title="These readings are generated by the built-in simulator, not a physical meter."
+    >
       <FlaskConical className="h-3 w-3" />
       Simulated data
     </Badge>
@@ -82,22 +154,22 @@ export function SimulatedBadge({ simulated }: { simulated: boolean }) {
 }
 
 const DEVICE_STATUS: Record<string, { label: string; dot: string; text: string; pulse?: boolean }> = {
-  online: { label: 'Online', dot: 'bg-emerald-500', text: 'text-emerald-600 dark:text-emerald-400' },
+  online: { label: 'Online', dot: 'bg-primary', text: 'text-primary' },
   connecting: { label: 'Connecting', dot: 'bg-sky-500', text: 'text-sky-600 dark:text-sky-400', pulse: true },
-  not_configured: { label: 'Not configured', dot: 'bg-amber-500', text: 'text-amber-600 dark:text-amber-400' },
-  offline: { label: 'Offline', dot: 'bg-slate-400', text: 'text-muted-foreground' },
-  error: { label: 'Error', dot: 'bg-red-500', text: 'text-red-600 dark:text-red-400' },
+  not_configured: { label: 'Not configured', dot: 'bg-warning', text: 'text-warning' },
+  offline: { label: 'Offline', dot: 'bg-muted-foreground/40', text: 'text-muted-foreground' },
+  error: { label: 'Error', dot: 'bg-destructive', text: 'text-destructive' },
 };
 
 /** Driven by what the backend actually observed, never by the UI. */
-export function StatusDot({ status }: { status: string }) {
+export function StatusDot({ status, className }: { status: string; className?: string }) {
   const meta = DEVICE_STATUS[status] ?? {
     label: status,
-    dot: 'bg-slate-400',
+    dot: 'bg-muted-foreground/40',
     text: 'text-muted-foreground',
   };
   return (
-    <span className={cn('inline-flex items-center gap-1.5 text-xs', meta.text)}>
+    <span className={cn('inline-flex items-center gap-1.5 text-xs', meta.text, className)}>
       <span className={cn('h-1.5 w-1.5 rounded-full', meta.dot, meta.pulse && 'animate-pulse')} />
       {meta.label}
     </span>
@@ -106,10 +178,10 @@ export function StatusDot({ status }: { status: string }) {
 
 export function InlineError({ message, onRetry }: { message: string; onRetry?: () => void }) {
   return (
-    <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm">
-      <p className="font-medium text-destructive">{message}</p>
+    <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-destructive/25 bg-destructive/[0.04] px-4 py-3">
+      <p className="text-sm font-medium text-destructive">{message}</p>
       {onRetry ? (
-        <button onClick={onRetry} className="mt-2 text-xs font-medium text-primary hover:underline">
+        <button onClick={onRetry} className="text-xs font-semibold text-primary hover:underline">
           Try again
         </button>
       ) : null}
