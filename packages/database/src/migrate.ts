@@ -3,14 +3,14 @@ import { pathToFileURL } from 'node:url';
 import { env } from '@wattnexa/config';
 import mysql from 'mysql2/promise';
 import { migrate } from 'drizzle-orm/mysql2/migrator';
-import { closeDatabase, db, parseDatabaseUrl } from './client';
+import { closeDatabase, db, dbConfig } from './client';
 
 /**
  * `drizzle-kit` assumes the database already exists. Creating it first makes
  * a fresh clone a single command away from a working setup.
  */
 export async function ensureDatabase(): Promise<void> {
-  const { host, port, user, password, database } = parseDatabaseUrl(env.DATABASE_URL);
+  const { host, port, user, password, database } = dbConfig;
   if (!/^[A-Za-z0-9_]+$/.test(database)) {
     throw new Error(`Refusing to create unsafe database name: ${database}`);
   }

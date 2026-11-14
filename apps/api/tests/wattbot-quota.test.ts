@@ -45,7 +45,7 @@ async function conversationCount(userId: string): Promise<number> {
 }
 
 beforeAll(async () => {
-  const passwordHash = await hashPassword('WattNexa@123');
+  const passwordHash = await hashPassword('demo@wattnexa.com');
 
   await db.insert(subscriptionPlans).values({
     id: planId,
@@ -93,8 +93,8 @@ beforeAll(async () => {
     provider: 'sandbox',
   });
 
-  quotaCookie = await login(`quota-${suffix}@test.local`, 'WattNexa@123');
-  freeCookie = await login(`quota-free-${suffix}@test.local`, 'WattNexa@123');
+  quotaCookie = await login(`quota-${suffix}@test.local`, 'demo@wattnexa.com');
+  freeCookie = await login(`quota-free-${suffix}@test.local`, 'demo@wattnexa.com');
 });
 
 afterAll(async () => {

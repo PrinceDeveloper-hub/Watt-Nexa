@@ -152,10 +152,10 @@ export function Login() {
           className="mt-1 text-left text-xs text-foreground hover:text-primary"
           onClick={() => {
             form.setValue('email', 'demo@wattnexa.com');
-            form.setValue('password', 'WattNexa@123');
+            form.setValue('password', 'demo@wattnexa.com');
           }}
         >
-          demo@wattnexa.com · WattNexa@123 — click to fill
+          demo@wattnexa.com · demo@wattnexa.com — click to fill
         </button>
       </Card>
     </AuthShell>

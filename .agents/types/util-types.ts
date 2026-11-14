@@ -1,4 +1,3 @@
-// ===== JSON Types =====
 export type JSONValue =
   | null
   | string
@@ -11,9 +10,6 @@ export type JSONObject = { [key: string]: JSONValue | undefined }
 
 export type JSONArray = JSONValue[]
 
-/**
- * JSON Schema definition (for prompt schema or output schema)
- */
 export type JsonSchema = {
   type?:
     | 'object'
@@ -174,9 +170,6 @@ export type MCPConfig =
       headers?: Record<string, string>
     }
 
-// ============================================================================
-// Logger Interface
-// ============================================================================
 export interface Logger {
   debug: (data: any, msg?: string) => void
   info: (data: any, msg?: string) => void

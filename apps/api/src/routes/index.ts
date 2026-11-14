@@ -18,7 +18,6 @@ apiRouter.use('/auth', authRouter);
 apiRouter.use('/users', usersRouter);
 apiRouter.use('/homes', homesRouter);
 apiRouter.use('/devices', devicesRouter);
-apiRouter.use('/appliances', applianceRouter);
 apiRouter.use('/telemetry', telemetryRouter);
 apiRouter.use('/energy', energyRouter);
 apiRouter.use('/billing', billingRouter);

@@ -4,69 +4,69 @@
 
 @layer base {
   :root {
-    /* Warm off-white canvas, forest ink. */
-    --background: 60 20% 97%;
-    --foreground: 165 30% 9%;
+    /* Premium neutral canvas, electric blue accent. */
+    --background: 220 14% 96%;
+    --foreground: 222 20% 9%;
     --surface: 0 0% 100%;
     --card: 0 0% 100%;
-    --card-foreground: 165 30% 9%;
-    --muted: 150 12% 93%;
-    --muted-foreground: 165 10% 38%;
-    --border: 150 12% 87%;
-    --input: 150 14% 82%;
+    --card-foreground: 222 20% 9%;
+    --muted: 220 12% 93%;
+    --muted-foreground: 220 10% 38%;
+    --border: 220 12% 87%;
+    --input: 220 14% 82%;
 
-    /* Forest green primary, lime accent, deep navy secondary. */
-    --primary: 160 72% 22%;
-    --primary-foreground: 60 25% 98%;
-    --primary-soft: 156 42% 92%;
-    --secondary: 212 48% 13%;
-    --secondary-foreground: 60 20% 97%;
-    --accent: 74 86% 55%;
-    --accent-foreground: 162 65% 10%;
-    --destructive: 0 68% 48%;
+    /* Electric blue primary, cyan accent, graphite secondary. */
+    --primary: 212 92% 48%;
+    --primary-foreground: 0 0% 100%;
+    --primary-soft: 212 60% 92%;
+    --secondary: 222 24% 14%;
+    --secondary-foreground: 220 14% 97%;
+    --accent: 188 92% 42%;
+    --accent-foreground: 222 50% 8%;
+    --destructive: 0 72% 50%;
     --destructive-foreground: 0 0% 100%;
-    --warning: 32 92% 42%;
-    --positive: 158 64% 30%;
-    --ring: 160 66% 30%;
+    --warning: 36 94% 46%;
+    --positive: 195 84% 38%;
+    --ring: 212 92% 48%;
 
-    --chart-1: 160 64% 26%;
-    --chart-2: 74 78% 46%;
-    --chart-3: 186 62% 38%;
-    --chart-4: 30 78% 52%;
-    --chart-5: 212 42% 32%;
+    --chart-1: 212 88% 48%;
+    --chart-2: 188 88% 44%;
+    --chart-3: 260 70% 56%;
+    --chart-4: 36 90% 52%;
+    --chart-5: 222 20% 40%;
 
     --radius: 0.875rem;
   }
 
   .dark {
-    /* Green-tinted charcoal, emerald primary. */
-    --background: 168 20% 6%;
-    --foreground: 60 16% 94%;
-    --surface: 168 16% 9%;
-    --card: 168 15% 10%;
-    --card-foreground: 60 16% 94%;
-    --muted: 168 13% 15%;
-    --muted-foreground: 160 9% 64%;
-    --border: 168 12% 19%;
-    --input: 168 12% 23%;
-    --primary: 158 62% 46%;
-    --primary-foreground: 168 55% 6%;
-    --primary-soft: 160 36% 16%;
-    --secondary: 168 16% 17%;
-    --secondary-foreground: 60 16% 94%;
-    --accent: 74 82% 62%;
-    --accent-foreground: 165 60% 8%;
-    --destructive: 0 66% 56%;
+    /* Deep charcoal / graphite, electric blue primary. */
+    --background: 222 18% 6%;
+    --foreground: 220 14% 94%;
+    --surface: 222 16% 9%;
+    --card: 222 15% 10%;
+    --card-foreground: 220 14% 94%;
+    --muted: 222 13% 15%;
+    --muted-foreground: 220 9% 64%;
+    --border: 222 12% 19%;
+    --input: 222 12% 23%;
+    --primary: 212 92% 58%;
+    --primary-foreground: 222 55% 6%;
+    --primary-soft: 212 36% 16%;
+    --secondary: 222 16% 17%;
+    --secondary-foreground: 220 14% 94%;
+    --accent: 188 92% 56%;
+    --accent-foreground: 222 50% 8%;
+    --destructive: 0 66% 58%;
     --destructive-foreground: 0 0% 100%;
-    --warning: 36 88% 56%;
-    --positive: 158 58% 52%;
-    --ring: 158 62% 46%;
+    --warning: 36 90% 58%;
+    --positive: 195 82% 52%;
+    --ring: 212 92% 58%;
 
-    --chart-1: 158 58% 50%;
-    --chart-2: 74 82% 62%;
-    --chart-3: 186 58% 52%;
-    --chart-4: 30 80% 58%;
-    --chart-5: 200 30% 64%;
+    --chart-1: 212 88% 58%;
+    --chart-2: 188 88% 56%;
+    --chart-3: 260 70% 62%;
+    --chart-4: 36 88% 60%;
+    --chart-5: 220 20% 68%;
   }
 
   * {
@@ -96,6 +96,16 @@
 
   :focus-visible {
     @apply outline-none ring-2 ring-ring/70 ring-offset-2 ring-offset-background;
+  }
+
+  /* Consistent, restrained hover transitions for interactive elements. */
+  button,
+  a,
+  [role='button'],
+  .panel,
+  .card {
+    transition: background-color 180ms ease-out, border-color 180ms ease-out,
+      color 180ms ease-out, box-shadow 220ms ease-out, transform 220ms ease-out;
   }
 
   /* Tabular figures everywhere numbers are compared. */
@@ -130,9 +140,9 @@
   /* Deep "instrument" panel used for the live-power hero. */
   .mesh-forest {
     background:
-      radial-gradient(120% 120% at 8% -20%, hsl(160 60% 30% / 0.85), transparent 58%),
-      radial-gradient(90% 90% at 108% 10%, hsl(74 80% 55% / 0.22), transparent 60%),
-      radial-gradient(80% 80% at 60% 120%, hsl(190 60% 30% / 0.4), transparent 65%),
+      radial-gradient(120% 120% at 8% -20%, hsl(212 70% 30% / 0.85), transparent 58%),
+      radial-gradient(90% 90% at 108% 10%, hsl(188 80% 55% / 0.22), transparent 60%),
+      radial-gradient(80% 80% at 60% 120%, hsl(260 60% 30% / 0.4), transparent 65%),
       hsl(var(--secondary));
   }
 
@@ -235,6 +245,12 @@
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
   }
   .live-dot::after {
     animation: none;

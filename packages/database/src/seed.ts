@@ -30,7 +30,7 @@ import {
   users,
 } from './schema';
 
-const DEMO_PASSWORD = 'WattNexa@123';
+const DEMO_PASSWORD = 'demo@wattnexa.com';
 const sha256 = (value: string) => createHash('sha256').update(value).digest('hex');
 const id = () => randomUUID();
 
@@ -248,14 +248,39 @@ export async function seed(): Promise<void> {
   await db.insert(tariffs).values({
     id: tariffId,
     homeId,
-    name: 'BESCOM Domestic',
-    provider: 'BESCOM',
-    region: 'Karnataka',
+    name: 'WBSEDCL Domestic (placeholder)',
+    provider: 'WBSEDCL',
+    distributor: 'WBSEDCL',
+    region: 'West Bengal',
     currency: 'INR',
     fixedCharge: 120,
     taxPercent: 0,
+    dutyRate: 0,
+    effectiveFrom: new Date('2026-01-01T00:00:00.000Z'),
+    sourceReference: 'NEEDS_CONFIRMATION',
     isActive: true,
   });
+
+  const cescTariffId = id();
+  await db.insert(tariffs).values({
+    id: cescTariffId,
+    homeId,
+    name: 'CESC Domestic (placeholder)',
+    provider: 'CESC',
+    distributor: 'CESC',
+    region: 'West Bengal',
+    currency: 'INR',
+    fixedCharge: 100,
+    taxPercent: 0,
+    dutyRate: 0,
+    effectiveFrom: new Date('2026-01-01T00:00:00.000Z'),
+    sourceReference: 'NEEDS_CONFIRMATION',
+    isActive: false,
+  });
+  await db.insert(tariffSlabs).values([
+    { id: id(), tariffId: cescTariffId, minKwh: 0, maxKwh: 100, ratePerKwh: 7, sortOrder: 1 },
+    { id: id(), tariffId: cescTariffId, minKwh: 100, maxKwh: null, ratePerKwh: 9, sortOrder: 2 },
+  ]);
   await db.insert(tariffSlabs).values([
     { id: id(), tariffId, minKwh: 0, maxKwh: 50, ratePerKwh: 4.15, sortOrder: 1 },
     { id: id(), tariffId, minKwh: 50, maxKwh: 100, ratePerKwh: 5.75, sortOrder: 2 },
@@ -468,6 +493,10 @@ export async function seed(): Promise<void> {
     energyKwh: 318.6,
     estimatedCost: 2418,
     actualCost: 2350,
+    fixedCharge: 120,
+    duty: 0,
+    rebate: 0,
+    distributor: 'WBSEDCL',
     status: 'actual',
     notes: 'Entered manually from the provider bill for comparison.',
   });

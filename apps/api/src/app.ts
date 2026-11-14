@@ -53,6 +53,18 @@ export function createApp(): Express {
     });
   });
 
+  // Aliases under /api for clients that expect the documented paths.
+  app.get('/api/health', (_req, res) => {
+    res.json({ success: true, data: { status: 'ok', uptime: process.uptime(), version: '1.0.0' } });
+  });
+  app.get('/api/health/database', async (_req, res) => {
+    const dbUp = await checkDatabase();
+    res.status(dbUp ? 200 : 503).json({
+      success: dbUp,
+      data: { database: dbUp ? 'connected' : 'unavailable' },
+    });
+  });
+
   app.use('/docs', swaggerUi.serve, swaggerUi.setup(openApiDocument as unknown as Record<string, unknown>, {
     customSiteTitle: 'WattNexa API',
   }));

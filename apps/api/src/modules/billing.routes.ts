@@ -2,12 +2,35 @@ import { Router } from 'express';
 import { and, desc, eq } from 'drizzle-orm';
 import { z } from 'zod';
 import { db, appliances, applianceUsage, electricityBills, tariffSlabs, tariffs } from '@wattnexa/database';
-import { applianceSchema, calculateCost, resolveRange, tariffSchema, type RangePreset } from '@wattnexa/shared';
+import { applianceSchema, calculateCost, resolveRange, tariffSchema, analyzeBillChange, type RangePreset, type BillForAnalysis, type TariffVersion } from '@wattnexa/shared';
 import { requireAuth } from '../middleware/auth';
 import { bodyOf, validate } from '../middleware/validate';
 import { asyncHandler, created, ok } from '../utils/http';
 import { accessibleDevices, requireHomeAccess } from '../lib/ownership';
 import { activeTariff, energyTotal, estimateBill } from '../services/energy';
+
+async function tariffVersionsForHome(homeId: string): Promise<TariffVersion[]> {
+  const rows = await db.select().from(tariffs).where(eq(tariffs.homeId, homeId));
+  return Promise.all(
+    rows.map(async (row) => {
+      const slabs = await db.select().from(tariffSlabs).where(eq(tariffSlabs.tariffId, row.id)).orderBy(tariffSlabs.sortOrder);
+      return {
+        id: row.id,
+        distributor: row.distributor ?? row.provider ?? null,
+        effectiveFrom: row.effectiveFrom,
+        effectiveTo: row.effectiveTo,
+        slabs: slabs.map((slab) => ({
+          minKwh: slab.minKwh,
+          maxKwh: slab.maxKwh,
+          ratePerKwh: slab.ratePerKwh,
+        })),
+        fixedCharge: row.fixedCharge,
+        dutyRate: row.dutyRate ?? row.taxPercent,
+        sourceReference: row.sourceReference,
+      } satisfies TariffVersion;
+    }),
+  );
+}
 import { newId } from '../utils/crypto';
 import { badRequest, notFound } from '../utils/errors';
 
@@ -170,6 +193,10 @@ billingRouter.post(
       periodEnd: z.string(),
       actualCost: z.coerce.number().min(0),
       energyKwh: z.coerce.number().min(0),
+      fixedCharge: z.coerce.number().min(0).optional(),
+      duty: z.coerce.number().min(0).optional(),
+      rebate: z.coerce.number().min(0).optional(),
+      distributor: z.string().trim().max(120).optional(),
       notes: z.string().max(500).optional(),
     }),
   }),
@@ -180,6 +207,10 @@ billingRouter.post(
       periodEnd: string;
       actualCost: number;
       energyKwh: number;
+      fixedCharge?: number;
+      duty?: number;
+      rebate?: number;
+      distributor?: string;
       notes?: string;
     }>(req);
     await requireHomeAccess(req.auth!.userId, input.homeId);
@@ -196,6 +227,10 @@ billingRouter.post(
       energyKwh: input.energyKwh,
       estimatedCost: estimated?.total ?? 0,
       actualCost: input.actualCost,
+      fixedCharge: input.fixedCharge ?? tariff?.fixedCharge ?? 0,
+      duty: input.duty ?? 0,
+      rebate: input.rebate ?? 0,
+      distributor: input.distributor ?? tariff?.provider ?? null,
       currency: tariff?.currency ?? 'INR',
       status: 'actual',
       notes: input.notes,
@@ -277,5 +312,42 @@ billingRouter.get(
     return ok(res, { monthKwh: total });
   }),
 );
+
+async function handleBillAnalysis(req: any, res: any): Promise<void> {
+  const billAId = String(req.body?.billAId ?? req.query?.billAId ?? '');
+  const billBId = String(req.body?.billBId ?? req.query?.billBId ?? '');
+  if (!billAId || !billBId) throw badRequest('billAId and billBId are required', 'MISSING_BILL_IDS');
+
+  const [billA] = await db.select().from(electricityBills).where(eq(electricityBills.id, billAId)).limit(1);
+  const [billB] = await db.select().from(electricityBills).where(eq(electricityBills.id, billBId)).limit(1);
+  if (!billA || !billB) throw notFound('Bill not found', 'BILL_NOT_FOUND');
+  await requireHomeAccess(req.auth!.userId, billA.homeId);
+  await requireHomeAccess(req.auth!.userId, billB.homeId);
+  if (billA.homeId !== billB.homeId) throw badRequest('Bills must belong to the same household', 'MISMATCHED_HOME');
+
+  const versions = await tariffVersionsForHome(billA.homeId);
+  const toBill = (row: typeof billA): BillForAnalysis => ({
+    id: row.id,
+    householdId: row.homeId,
+    billingStart: row.periodStart,
+    billingEnd: row.periodEnd,
+    units: row.energyKwh,
+    amount: row.actualCost ?? 0,
+    fixedCharge: row.fixedCharge ?? 0,
+    duty: row.duty ?? 0,
+    rebate: row.rebate ?? 0,
+    distributor: row.distributor,
+    tariffVersion: versions.find((version) => version.id === row.tariffId) ?? null,
+    tariffVersionId: row.tariffId,
+  });
+
+  const analysis = analyzeBillChange(toBill(billA), toBill(billB), versions);
+  ok(res, analysis);
+}
+
+for (const route of ['/bill-analysis', '/analysis', '/analyze', '/root-cause', '/bills/analyze', '/bills/analysis', '/bills/root-cause', '/bill-change']) {
+  billingRouter.get(route, asyncHandler(handleBillAnalysis));
+  billingRouter.post(route, asyncHandler(handleBillAnalysis));
+}
 
 export { badRequest };

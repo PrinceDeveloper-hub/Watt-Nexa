@@ -115,7 +115,7 @@ describe('custom range end to end', () => {
     await db.insert(users).values({
       id: userId,
       email: `range-${suffix}@test.local`,
-      passwordHash: await hashPassword('WattNexa@123'),
+      passwordHash: await hashPassword('demo@wattnexa.com'),
       name: 'Range User',
       emailVerifiedAt: new Date(),
     });
@@ -149,7 +149,7 @@ describe('custom range end to end', () => {
 
     const response = await request(app)
       .post('/api/v1/auth/login')
-      .send({ email: `range-${suffix}@test.local`, password: 'WattNexa@123' })
+      .send({ email: `range-${suffix}@test.local`, password: 'demo@wattnexa.com' })
       .expect(200);
     const raw = response.headers['set-cookie'] as unknown as string[] | undefined;
     cookie = (raw ?? []).map((value) => value.split(';')[0]).join('; ');

@@ -13,6 +13,8 @@
     "generate": "drizzle-kit generate",
     "migrate": "tsx src/migrate.ts",
     "seed": "tsx src/seed.ts",
+    "check": "tsx src/check.ts",
+    "bulk-data": "tsx src/bulk-data.ts",
     "reset": "tsx src/reset.ts",
     "typecheck": "tsc --noEmit"
   },

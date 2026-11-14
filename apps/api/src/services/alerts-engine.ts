@@ -22,13 +22,19 @@ interface AlertDraft {
 
 const SUPPRESSION_MS = 30 * 60 * 1000;
 
-/** Avoids alert storms: the same alert type is suppressed for 30 minutes. */
-async function recentlyRaised(userId: string, type: AlertType): Promise<boolean> {
-  const [row] = await db
-    .select({ id: alerts.id })
-    .from(alerts)
-    .where(and(eq(alerts.userId, userId), eq(alerts.type, type), gte(alerts.createdAt, new Date(Date.now() - SUPPRESSION_MS))))
-    .limit(1);
+/** Avoids alert storms: the same alert type is suppressed for 30 minutes.
+ * For device-specific alerts, also checks the device ID to allow different devices
+ * to trigger independently while suppressing repeated alerts for the same device. */
+async function recentlyRaised(
+  userId: string,
+  type: AlertType,
+  deviceId?: string | null
+): Promise<boolean> {
+  const conditions = [eq(alerts.userId, userId), eq(alerts.type, type), gte(alerts.createdAt, new Date(Date.now() - SUPPRESSION_MS))];
+  if (deviceId) {
+    conditions.push(eq(alerts.deviceId, deviceId));
+  }
+  const [row] = await db.select({ id: alerts.id }).from(alerts).where(and(...conditions)).limit(1);
   return Boolean(row);
 }
 
@@ -125,7 +131,7 @@ export async function runAlertChecks(input: {
     const { sample } = input;
 
     if (prefs.powerThresholdW != null && sample.activePower != null && sample.activePower > prefs.powerThresholdW) {
-      if (!(await recentlyRaised(input.ownerId, 'high_power'))) {
+      if (!(await recentlyRaised(input.ownerId, 'high_power', input.deviceId))) {
         await createAlert({
           userId: input.ownerId,
           homeId: input.homeId,
@@ -144,7 +150,7 @@ export async function runAlertChecks(input: {
       sample.temperature != null &&
       sample.temperature > prefs.temperatureThresholdC
     ) {
-      if (!(await recentlyRaised(input.ownerId, 'high_temperature'))) {
+      if (!(await recentlyRaised(input.ownerId, 'high_temperature', input.deviceId))) {
         await createAlert({
           userId: input.ownerId,
           homeId: input.homeId,
@@ -159,7 +165,7 @@ export async function runAlertChecks(input: {
     }
 
     if (sample.source === 'hardware' && sample.activePower != null && sample.activePower > 8000) {
-      if (!(await recentlyRaised(input.ownerId, 'unusual_consumption'))) {
+      if (!(await recentlyRaised(input.ownerId, 'unusual_consumption', input.deviceId))) {
         await createAlert({
           userId: input.ownerId,
           homeId: input.homeId,
@@ -193,7 +199,7 @@ export async function markStaleDevicesOffline(): Promise<void> {
         reason: `No telemetry for ${env.OFFLINE_THRESHOLD_SECONDS}s`,
       },
     );
-    if (!(await recentlyRaised(device.ownerId, 'device_offline'))) {
+    if (!(await recentlyRaised(device.ownerId, 'device_offline', device.id))) {
       await createAlert({
         userId: device.ownerId,
         homeId: device.homeId,

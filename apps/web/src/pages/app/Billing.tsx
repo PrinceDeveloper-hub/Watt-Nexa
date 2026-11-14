@@ -92,6 +92,8 @@ export function Billing() {
   const [tariffOpen, setTariffOpen] = useState(false);
   const [applianceOpen, setApplianceOpen] = useState(false);
   const [billOpen, setBillOpen] = useState(false);
+  const [billAId, setBillAId] = useState('');
+  const [billBId, setBillBId] = useState('');
   const [billPage, setBillPage] = useState(1);
   const [billPageSize, setBillPageSize] = useState(5);
   const initialPeriod = currentPeriod();
@@ -127,6 +129,11 @@ export function Billing() {
     queryKey: ['bills', homeId],
     queryFn: () => api.get<RecordedBill[]>(`/billing/bills?homeId=${homeId}`),
     enabled: Boolean(homeId),
+  });
+  const billAnalysis = useQuery({
+    queryKey: ['bill-analysis', billAId, billBId],
+    queryFn: () => api.get<any>(`/billing/bill-analysis?billAId=${billAId}&billBId=${billBId}`),
+    enabled: Boolean(homeId && billAId && billBId),
   });
 
   useEffect(() => {
@@ -633,6 +640,56 @@ export function Billing() {
             <p className="mx-auto mt-1 max-w-md text-[11px] leading-relaxed text-muted-foreground">
               Record the real amount when it arrives. It is stored separately and never overwrites the estimate.
             </p>
+          </div>
+        ) : null}
+      </section>
+
+      <section className="panel p-5">
+        <h2 className="font-display text-sm font-semibold">Two-bill root-cause analysis</h2>
+        <p className="mt-0.5 text-xs text-muted-foreground">
+          Compare two recorded bills to split the change into consumption, tariff, billing-period length, fixed charges, duty and rebates.
+        </p>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          <Field label="Baseline bill">
+            <Select value={billAId} onChange={(event) => setBillAId(event.target.value)}>
+              <option value="">Select a bill</option>
+              {billRows.map((bill) => (
+                <option key={bill.id} value={bill.id}>
+                  {new Date(bill.periodStart).toLocaleDateString('en-IN')} – {bill.actualCost != null ? `₹${bill.actualCost}` : 'estimate'}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          <Field label="Comparison bill">
+            <Select value={billBId} onChange={(event) => setBillBId(event.target.value)}>
+              <option value="">Select a bill</option>
+              {billRows.map((bill) => (
+                <option key={bill.id} value={bill.id}>
+                  {new Date(bill.periodStart).toLocaleDateString('en-IN')} – {bill.actualCost != null ? `₹${bill.actualCost}` : 'estimate'}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        </div>
+        {billAnalysis.data ? (
+          <div className="mt-4 space-y-2">
+            <p className="text-sm font-medium">
+              Total change: {formatCurrency(billAnalysis.data.totalDifference, 'INR')}
+            </p>
+            {!billAnalysis.data.hasEnoughData ? (
+              <p className="text-xs text-muted-foreground">Not enough data: a tariff version is missing for at least one billing date.</p>
+            ) : null}
+            <ul className="space-y-1 text-xs">
+              {billAnalysis.data.components?.map((component: any) => (
+                <li key={component.key} className="flex justify-between gap-3">
+                  <span>{component.label}</span>
+                  <span className="tabular-nums">
+                    {component.amount == null ? 'unavailable' : formatCurrency(component.amount, 'INR')}
+                  </span>
+                </li>
+              ))}
+            </ul>
+            <p className="text-[10px] text-muted-foreground">{billAnalysis.data.deterministicExplanation}</p>
           </div>
         ) : null}
       </section>

@@ -44,8 +44,8 @@ pnpm dev
 - API: <http://localhost:4000>
 - API docs: <http://localhost:4000/docs>
 
-> **Important:** `DATABASE_URL` must match the Compose service — `mysql://wattnexa:wattnexa@localhost:3306/wattnexa`.
-> If you see "Database unreachable", check the port in `.env` first.
+> **Important:** `DATABASE_URL` (or the preferred `DB_HOST`/`DB_PORT`/`DB_USER`/`DB_PASSWORD`/`DB_NAME` variables) must match your MariaDB instance.
+> If you see "Database unreachable", check the host and port in `.env` first.
 
 ### Windows notes
 

@@ -1,5 +1,5 @@
 import { db } from '@wattnexa/database';
-import { eq, desc } from 'drizzle-ord';
+import { eq, desc } from 'drizzle-orm';
 import type { TelemetrySample } from '@wattnexa/types';
 import { detectApplianceAnomalies } from './appliance-anomaly';
 import { env } from '../config';

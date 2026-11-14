@@ -1,6 +1,6 @@
 import { env } from '@wattnexa/config';
 import mysql from 'mysql2/promise';
-import { closeDatabase, parseDatabaseUrl } from './client';
+import { closeDatabase, dbConfig } from './client';
 import { ensureDatabase, runMigrations } from './migrate';
 import { seed } from './seed';
 
@@ -12,7 +12,7 @@ export async function resetDatabase(): Promise<void> {
   if (env.NODE_ENV === 'production') {
     throw new Error('Refusing to reset a production database');
   }
-  const { host, port, user, password, database } = parseDatabaseUrl(env.DATABASE_URL);
+  const { host, port, user, password, database } = dbConfig;
   const connection = await mysql.createConnection({
     host,
     port,

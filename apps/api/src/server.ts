@@ -1,5 +1,5 @@
 import { createServer } from 'node:http';
-import { checkDatabase, closeDatabase } from '@wattnexa/database';
+import { checkDatabase, closeDatabase, dbConfig } from '@wattnexa/database';
 import { createApp } from './app';
 import { env, isProduction } from './config';
 import { logger } from './lib/logger';
@@ -11,7 +11,7 @@ async function main(): Promise<void> {
   const dbUp = await checkDatabase();
   if (!dbUp) {
     logger.error(
-      'Database unreachable. Start MariaDB (docker compose up -d mariadb) then run pnpm db:migrate && pnpm db:seed.',
+      `Database unreachable at ${dbConfig.host}:${dbConfig.port}. Start MariaDB (docker compose up -d mariadb) then run pnpm db:migrate && pnpm db:seed.`,
     );
     process.exitCode = 1;
     return;

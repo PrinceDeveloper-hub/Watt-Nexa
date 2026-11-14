@@ -235,10 +235,15 @@ export const tariffs = mysqlTable(
       .references(() => homes.id, { onDelete: 'cascade' }),
     name: varchar('name', { length: 120 }).notNull(),
     provider: varchar('provider', { length: 120 }),
+    distributor: varchar('distributor', { length: 120 }),
     region: varchar('region', { length: 120 }),
     currency: char('currency', { length: 3 }).notNull().default('INR'),
     fixedCharge: double('fixed_charge').notNull().default(0),
     taxPercent: double('tax_percent').notNull().default(0),
+    dutyRate: double('duty_rate').notNull().default(0),
+    effectiveFrom: timestamp('effective_from', { mode: 'date', fsp: 3 }).notNull().defaultNow(),
+    effectiveTo: timestamp('effective_to', { mode: 'date', fsp: 3 }),
+    sourceReference: varchar('source_reference', { length: 255 }),
     isActive: boolean('is_active').notNull().default(true),
     ...timestamps,
   },
@@ -276,6 +281,10 @@ export const electricityBills = mysqlTable(
     energyKwh: double('energy_kwh').notNull().default(0),
     estimatedCost: double('estimated_cost').notNull().default(0),
     actualCost: double('actual_cost'),
+    fixedCharge: double('fixed_charge').notNull().default(0),
+    duty: double('duty').notNull().default(0),
+    rebate: double('rebate').notNull().default(0),
+    distributor: varchar('distributor', { length: 120 }),
     currency: char('currency', { length: 3 }).notNull().default('INR'),
     status: mysqlEnum('status', ['estimated', 'actual']).notNull().default('estimated'),
     breakdown: json('breakdown').$type<Record<string, unknown>>(),
@@ -283,6 +292,27 @@ export const electricityBills = mysqlTable(
     ...timestamps,
   },
   (table) => [index('idx_bills_home_period').on(table.homeId, table.periodStart)],
+);
+
+export const billCorrections = mysqlTable(
+  'bill_corrections',
+  {
+    id: char('id', { length: 36 }).primaryKey(),
+    billId: char('bill_id', { length: 36 })
+      .notNull()
+      .references(() => electricityBills.id, { onDelete: 'cascade' }),
+    householdId: char('household_id', { length: 36 })
+      .notNull()
+      .references(() => homes.id, { onDelete: 'cascade' }),
+    editedBy: char('edited_by', { length: 36 }).references(() => users.id, { onDelete: 'set null' }),
+    previousAmount: double('previous_amount'),
+    newAmount: double('new_amount'),
+    previousUnits: double('previous_units'),
+    newUnits: double('new_units'),
+    reason: text('reason'),
+    createdAt: timestamp('created_at', { mode: 'date', fsp: 3 }).notNull().defaultNow(),
+  },
+  (table) => [index('idx_bill_corrections_bill').on(table.billId)],
 );
 
 export const appliances = mysqlTable(

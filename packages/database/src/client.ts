@@ -27,16 +27,39 @@ export function parseDatabaseUrl(url: string): ParsedDatabaseUrl {
   };
 }
 
+/** Resolve the database connection from DB_* (preferred) or DATABASE_URL. */
+export function resolveDatabaseConfig(): ParsedDatabaseUrl {
+  const dbHost = env.DB_HOST;
+  const dbPort = env.DB_PORT;
+  const dbUser = env.DB_USER;
+  const dbPassword = env.DB_PASSWORD;
+  const dbName = env.DB_NAME;
+  if (dbUser && dbPassword != null && dbName) {
+    return {
+      host: dbHost || '127.0.0.1',
+      port: dbPort || 3307,
+      user: dbUser,
+      password: dbPassword,
+      database: dbName,
+      charset: 'utf8mb4',
+      timezone: 'Z',
+    };
+  }
+  return parseDatabaseUrl(env.DATABASE_URL);
+}
+
 declare global {
   // eslint-disable-next-line no-var
   var __wattnexaPool: mysql.Pool | undefined;
 }
 
 /** Reuse the pool across hot reloads so tsx watch does not leak connections. */
+export const dbConfig = resolveDatabaseConfig();
+
 export const pool =
   globalThis.__wattnexaPool ??
   mysql.createPool({
-    ...parseDatabaseUrl(env.DATABASE_URL),
+    ...dbConfig,
     waitForConnections: true,
     connectionLimit: 10,
     enableKeepAlive: true,

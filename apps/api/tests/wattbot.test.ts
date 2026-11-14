@@ -35,14 +35,14 @@ const planId = randomUUID();
 let userCookie = '';
 let adminCookie = '';
 
-async function login(email: string, password = 'WattNexa@123'): Promise<string> {
+async function login(email: string, password = 'demo@wattnexa.com'): Promise<string> {
   const response = await request(app).post('/api/v1/auth/login').send({ email, password }).expect(200);
   const raw = response.headers['set-cookie'] as unknown as string[] | undefined;
   return (raw ?? []).map((cookie) => cookie.split(';')[0]).join('; ');
 }
 
 beforeAll(async () => {
-  const passwordHash = await hashPassword('WattNexa@123');
+  const passwordHash = await hashPassword('demo@wattnexa.com');
   await db.insert(subscriptionPlans).values({
     id: planId,
     slug: `wattbot-test-${suffix}`,

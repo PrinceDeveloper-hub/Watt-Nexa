@@ -53,6 +53,13 @@ const envSchema = z.object({
     .string()
     .default('mysql://wattnexa:wattnexa@localhost:3306/wattnexa'),
 
+  // Database connection details (preferred over DATABASE_URL when all are set).
+  DB_HOST: z.string().trim().optional(),
+  DB_PORT: z.coerce.number().int().positive().optional(),
+  DB_USER: z.string().trim().optional(),
+  DB_PASSWORD: z.string().optional(),
+  DB_NAME: z.string().trim().optional(),
+
   JWT_ACCESS_SECRET: z.string().min(16).default('dev-access-secret-change-me-please'),
   JWT_REFRESH_SECRET: z.string().min(16).default('dev-refresh-secret-change-me-please'),
   ACCESS_TOKEN_TTL: z.string().default('15m'),
