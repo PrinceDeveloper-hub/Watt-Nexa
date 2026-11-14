@@ -1,0 +1,8 @@
+packages:
+  - "apps/*"
+  - "packages/*"
+
+# Native post-install scripts are blocked by default in recent pnpm versions.
+allowBuilds:
+  '@scarf/scarf': true
+  esbuild: false

@@ -1,0 +1,35 @@
+name: wattnexa
+
+services:
+  mariadb:
+    image: mariadb:11.4
+    container_name: wattnexa-mariadb
+    restart: unless-stopped
+    environment:
+      MARIADB_ROOT_PASSWORD: root
+      MARIADB_DATABASE: wattnexa
+      MARIADB_USER: wattnexa
+      MARIADB_PASSWORD: wattnexa
+    ports:
+      - "3306:3306"
+    volumes:
+      - wattnexa-db:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  mosquitto:
+    image: eclipse-mosquitto:2
+    container_name: wattnexa-mosquitto
+    restart: unless-stopped
+    ports:
+      - "1883:1883"
+    volumes:
+      - ./docker/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - wattnexa-mqtt:/mosquitto/data
+
+volumes:
+  wattnexa-db:
+  wattnexa-mqtt:

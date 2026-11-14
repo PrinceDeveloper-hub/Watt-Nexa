@@ -1,0 +1,32 @@
+import { Router } from 'express';
+import { authRouter } from '../modules/auth.routes';
+import { usersRouter } from '../modules/users.routes';
+import { homesRouter } from '../modules/homes.routes';
+import { devicesRouter } from '../modules/devices.routes';
+import { telemetryRouter } from '../modules/telemetry.routes';
+import { energyRouter } from '../modules/energy.routes';
+import { billingRouter } from '../modules/billing.routes';
+import { alertsRouter } from '../modules/alerts.routes';
+import { wattbotRouter } from '../modules/wattbot.routes';
+import { adminRouter } from '../modules/admin.routes';
+import { publicRouter } from '../modules/public.routes';
+import { subscriptionsRouter } from '../modules/subscriptions.routes';
+import { reportsRouter } from '../modules/reports.routes';
+import { devRouter } from '../modules/dev.routes';
+
+export const apiRouter = Router();
+
+apiRouter.use('/auth', authRouter);
+apiRouter.use('/users', usersRouter);
+apiRouter.use('/homes', homesRouter);
+apiRouter.use('/devices', devicesRouter);
+apiRouter.use('/telemetry', telemetryRouter);
+apiRouter.use('/energy', energyRouter);
+apiRouter.use('/billing', billingRouter);
+apiRouter.use('/alerts', alertsRouter);
+apiRouter.use('/wattbot', wattbotRouter);
+apiRouter.use('/subscriptions', subscriptionsRouter);
+apiRouter.use('/reports', reportsRouter);
+apiRouter.use('/admin', adminRouter);
+apiRouter.use('/public', publicRouter);
+apiRouter.use('/dev', devRouter);

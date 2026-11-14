@@ -1,0 +1,107 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 210 25% 98%;
+    --foreground: 222 47% 11%;
+    --surface: 0 0% 100%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+    --muted: 214 20% 95%;
+    --muted-foreground: 215 16% 45%;
+    --border: 214 20% 89%;
+    --input: 214 20% 86%;
+    --primary: 158 84% 36%;
+    --primary-foreground: 0 0% 100%;
+    --primary-soft: 158 70% 94%;
+    --secondary: 222 40% 13%;
+    --secondary-foreground: 0 0% 100%;
+    --accent: 187 85% 42%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --ring: 158 84% 36%;
+    --radius: 0.75rem;
+  }
+
+  .dark {
+    --background: 222 47% 5%;
+    --foreground: 210 30% 96%;
+    --surface: 222 40% 8%;
+    --card: 222 38% 9%;
+    --card-foreground: 210 30% 96%;
+    --muted: 222 32% 14%;
+    --muted-foreground: 215 18% 62%;
+    --border: 220 26% 17%;
+    --input: 220 26% 20%;
+    --primary: 158 78% 46%;
+    --primary-foreground: 222 47% 6%;
+    --primary-soft: 158 60% 14%;
+    --secondary: 210 32% 92%;
+    --secondary-foreground: 222 47% 8%;
+    --accent: 187 92% 55%;
+    --accent-foreground: 222 47% 6%;
+    --destructive: 0 70% 55%;
+    --destructive-foreground: 0 0% 100%;
+    --ring: 158 78% 46%;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  }
+
+  ::selection {
+    @apply bg-primary/25;
+  }
+
+  :focus-visible {
+    @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
+  }
+}
+
+@layer components {
+  .glass {
+    background: color-mix(in srgb, hsl(var(--card)) 82%, transparent);
+    backdrop-filter: blur(14px);
+  }
+
+  .grid-bg {
+    background-image:
+      linear-gradient(to right, hsl(var(--border) / 0.55) 1px, transparent 1px),
+      linear-gradient(to bottom, hsl(var(--border) / 0.55) 1px, transparent 1px);
+    background-size: 56px 56px;
+  }
+
+  .hero-glow {
+    background:
+      radial-gradient(ellipse 60% 55% at 50% -10%, hsl(var(--primary) / 0.22), transparent 70%),
+      radial-gradient(ellipse 40% 40% at 85% 15%, hsl(var(--accent) / 0.14), transparent 70%);
+  }
+
+  .text-gradient {
+    background: linear-gradient(92deg, hsl(var(--foreground)), hsl(var(--primary)));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: hsl(var(--border));
+    border-radius: 999px;
+  }
+}
