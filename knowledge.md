@@ -74,7 +74,8 @@ pnpm --filter @wattnexa/api kb:reindex   # rebuild WattBot knowledge chunks/vect
   `telemetry.test.ts` creates and removes its own user/home/device.
 - `NODE_ENV=test` disables every rate limiter, so 429 paths are never exercised by tests.
 - `pnpm lint` fails: no workspace defines a `lint` script and there is no ESLint config. Don't add one.
-- Demo user `demo@wattnexa.com` / `WattNexa@123`; Swagger at `/docs`; readiness at `/health/ready`.
+- Seeded users (demo/admin/support/super) all use password `demo@wattnexa.com`; demo login
+  `demo@wattnexa.com`. Swagger at `/docs`; readiness at `/health/ready`.
 
 ## Environment
 

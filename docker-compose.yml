@@ -1,5 +1,4 @@
 name: wattnexa
-
 services:
   mariadb:
     image: mariadb:11.4

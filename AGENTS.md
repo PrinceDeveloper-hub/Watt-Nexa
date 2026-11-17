@@ -11,7 +11,7 @@ operations.
 ```bash
 pnpm install
 cp .env.example .env            # only if .env is missing; it is gitignored
-pnpm docker:up                  # MariaDB 11 on :3306 (see Gotchas for this machine's :3308)
+pnpm docker:up                  # MariaDB 11 on :3306 (this checkout's .env uses :3307 — see Gotchas)
 pnpm db:migrate && pnpm db:seed
 pnpm dev                        # API :4000 + web :5173
 ```
@@ -21,14 +21,16 @@ pnpm dev                        # API :4000 + web :5173
 - The API exits at startup if MariaDB is unreachable (`apps/api/src/server.ts`). Start the DB first.
 - To run only the API (e.g. the web dev server already owns `:5173`):
   `pnpm --filter @wattnexa/api dev`.
-- Demo user `demo@wattnexa.com` / `WattNexa@123`; Swagger at `/docs`; readiness at `/health/ready`.
+- Seeded users (demo/admin/support/super) all use password `demo@wattnexa.com`; demo login
+  `demo@wattnexa.com`. Swagger at `/docs`; readiness at `/health/ready`.
 
 ## Commands
 
 - `pnpm typecheck` — repo-wide gate, but it **currently fails** in
-  `apps/api/src/modules/billing.routes.ts` (`installationDate` is a string while Drizzle expects a
-  `Date`; `ratedPowerW` is used while optional). `packages/*` and `apps/web` pass. Confirm a failure
-  is not yours before claiming success.
+  `apps/api/src/services/appliance-alerts.ts` (mysql2 raw result `rows` typing),
+  `appliance-anomaly.ts` (optional fields inferred as `{}`) and `appliance-health-assessment.ts`
+  (missing `sql`/`and`/`gte`/`lt` imports). `packages/*` and `apps/web` pass. Confirm a failure is not
+  yours before claiming success.
 - `pnpm test` — all suites pass **after MariaDB is up and `pnpm db:migrate && pnpm db:seed` has run**.
   The API tests (`apps/api/tests/*.test.ts`) are integration tests: they log in as the seeded
   demo/admin users; `telemetry.test.ts` creates and removes its own user/home/device.
@@ -138,11 +140,13 @@ pnpm dev                        # API :4000 + web :5173
 - `DATABASE_URL` must match the MariaDB instance you actually run. Compose publishes MariaDB 11 on
   **3306** (`mysql://wattnexa:wattnexa@localhost:3306/wattnexa`); a mismatch surfaces as "Database
   unreachable". The schema needs MariaDB 11 / MySQL 8 — MySQL 5.5 cannot handle `JSON` or `timestamp(3)`.
-- This checkout's `.env` (gitignored) points at a dedicated MariaDB 11.8 on **3308** because `:3306`
-  here is MySQL 5.5 and Docker is unavailable. Start that `mariadbd` (data dir
-  `%LOCALAPPDATA%\WattNexa\mariadb-data`) before `pnpm db:*` or `pnpm dev`.
-- A 500 from every `/api/v1/*` call in the browser usually means the API on `:4000` is down, not a
-  route bug: Vite proxies `/api` there. Check `http://localhost:4000/health` first.
+- This checkout's `.env` (gitignored) points at a dedicated MariaDB on **3307**; Docker is unavailable
+  here. Start that `mariadbd` before `pnpm db:*` or `pnpm dev`. `.env.example` also uses 3307.
+- Browser calls use `VITE_API_URL` if set, otherwise same-origin `/api` via the Vite proxy to `:4000`;
+  Socket.IO uses `VITE_SOCKET_URL` (default `window.location.origin`). For local HTTP, keep
+  `VITE_API_URL`/`VITE_SOCKET_URL` at `http://localhost:4000`, `CORS_ORIGINS=http://localhost:5173`,
+  `COOKIE_SAME_SITE=lax` and `COOKIE_SECURE=false`. A tunnel/Vercel `VITE_*` value plus Secure cookies
+  breaks login on `http://localhost:5173`. Check `http://localhost:4000/health` first.
 - Use pnpm. `package-lock.json` is tracked but `pnpm-lock.yaml` is authoritative (Vercel installs with
   `--frozen-lockfile`); don't regenerate the npm lockfile.
 - `pnpm-workspace.yaml` gates install scripts via `allowBuilds`; pnpm blocks them by default.

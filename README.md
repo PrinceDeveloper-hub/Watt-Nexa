@@ -56,10 +56,10 @@ The API loads the root `.env` automatically, so run `pnpm` from the repository r
 
 | Role | Email | Password |
 | --- | --- | --- |
-| User | `demo@wattnexa.com` | `WattNexa@123` |
-| Admin | `admin@wattnexa.com` | `WattNexa@123` |
-| Support | `support@wattnexa.com` | `WattNexa@123` |
-| Super admin | `super@wattnexa.com` | `WattNexa@123` |
+| User | `demo@wattnexa.com` | `demo@wattnexa.com` |
+| Admin | `admin@wattnexa.com` | `demo@wattnexa.com` |
+| Support | `support@wattnexa.com` | `demo@wattnexa.com` |
+| Super admin | `super@wattnexa.com` | `demo@wattnexa.com` |
 
 Seeded pairing code: `WNX-PAIR-4F2A`.
 
